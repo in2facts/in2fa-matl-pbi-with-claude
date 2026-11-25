@@ -169,7 +169,7 @@ table 'Session Result'
 		lineageTag: cf99ab9e-8367-438c-9967-4fda8c383516
 
 	/// Cell text for the driver-by-round grid - points scored, or the retirement reason where the driver was not classified.
-	measure 'Points By Round (txt)' =
+	measure 'Points per Round (txt)' =
 			VAR Pts = [Points (pts)]
 			VAR PosText =
 				CALCULATE(
