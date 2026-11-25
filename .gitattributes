@@ -1,0 +1,19 @@
+# Courseware is text throughout. Normalise to LF so a clone on another machine
+# does not show whole-file diffs that are nothing but line endings.
+* text=auto eol=lf
+*.md   text eol=lf
+*.py   text eol=lf
+*.json text eol=lf
+*.csv  text eol=lf
+*.tmdl text eol=lf
+
+*.xlsx binary
+*.pbix binary
+*.abf  binary
+*.png  binary
+*.jpg  binary
+*.pptx binary
+
+# Embedded verbatim in the workbook by tools/build_checklist.py rather than
+# read as source, so it must round-trip byte for byte.
+tools/checklist-theme.xml binary

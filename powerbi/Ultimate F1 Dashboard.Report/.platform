@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "Ultimate F1 Dashboard"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "59835578-4248-4fdf-a99a-c8e257dec0d6"
+  }
+}

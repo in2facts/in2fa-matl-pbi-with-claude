@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+
+# Power BI Desktop working state. Unanchored on purpose: "*.Report/.pbi/"
+# never matches, because * does not cross a path separator.
+.pbi/
+
+# Office owner/lock files, present only while a document is open in Word,
+# Excel or PowerPoint. Git cannot read them and they must never be committed.
+~$*
+
+# draw.io desktop writes a backup beside the file it is editing
+.$*.bkp
