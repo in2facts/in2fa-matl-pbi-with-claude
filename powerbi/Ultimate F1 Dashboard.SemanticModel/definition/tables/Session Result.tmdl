@@ -1,0 +1,528 @@
+/// One row per driver per points-scoring session. Race and Sprint results are
+/// field-identical in the API, so they share this table and the Session
+/// dimension separates them - which means every measure here responds to a
+/// Session filter rather than hard-coding one kind of session.
+/// 
+/// Every physical column is hidden: users browse measures, not raw fact columns.
+table 'Session Result'
+	lineageTag: 0037e203-c67a-4cd2-bc41-bd42f9b2e987
+
+	/// Championship points scored, summing race and sprint sessions in the current filter context.
+	measure 'Points (pts)' = SUM('Session Result'[Points])
+		formatString: #,##0.##
+		displayFolder: 01 Base Measures
+		lineageTag: c7c0d39d-c3dd-4f69-b8e0-19a327b1d268
+
+	/// First places in whatever session context applies - Grand Prix wins by default, sprint wins when Session is filtered to Sprint.
+	measure 'Wins (#)' = CALCULATE(COUNTROWS('Session Result'), 'Session Result'[Position] = 1)
+		formatString: #,##0
+		displayFolder: 01 Base Measures\03 Calculate Measures
+		lineageTag: c96e2d6e-ea31-4f96-b7c9-46eaa5be5171
+
+	/// Top-three finishes in the current session context.
+	measure 'Podiums (#)' = CALCULATE(COUNTROWS('Session Result'), 'Session Result'[Position] <= 3)
+		formatString: #,##0
+		displayFolder: 01 Base Measures\03 Calculate Measures
+		lineageTag: f23f415d-e643-4378-9eac-b12ad14c3b3b
+
+	/// Number of distinct race weekends with a classified entry.
+	measure 'Distinct Races (#)' = DISTINCTCOUNT('Session Result'[Race Key])
+		formatString: #,##0
+		displayFolder: 02 Aggregations
+		lineageTag: 35399579-806f-411a-9305-fb9a1cfbff88
+
+	/// Mean finishing position, ignoring sessions where the driver was not classified.
+	measure 'Average Finish (pos)' = AVERAGE('Session Result'[Position])
+		formatString: #,##0.0
+		displayFolder: 02 Aggregations
+		lineageTag: 667554f0-b938-402f-8800-b2d22abfb077
+
+	/// Mean starting position. Pit-lane starts are recorded as grid 0 and are excluded.
+	measure 'Average Grid (pos)' =
+			AVERAGEX(
+				FILTER('Session Result', 'Session Result'[Grid Position] > 0),
+				'Session Result'[Grid Position]
+			)
+		formatString: #,##0.0
+		displayFolder: 02 Aggregations
+		lineageTag: 52114fe9-2ac7-4b82-b911-a83b62073017
+
+	/// Largest number of places gained between grid and finish in a single session.
+	measure 'Max Position Gain (pos)' =
+			MAXX(
+				FILTER(
+					'Session Result',
+					NOT ISBLANK('Session Result'[Position]) && 'Session Result'[Grid Position] > 0
+				),
+				'Session Result'[Grid Position] - 'Session Result'[Position]
+			)
+		formatString: #,##0
+		displayFolder: 02 Aggregations
+		lineageTag: be88375c-e9cb-4e52-981f-94c7fe553035
+
+	/// Largest gap from winner to runner-up. Blank for sessions where the runner-up was lapped and has no recorded time.
+	measure 'Max Winning Margin (s)' =
+			VAR PerRace =
+				ADDCOLUMNS(
+					SUMMARIZE('Session Result', 'Session Result'[Race Key]),
+					"@Margin",
+						VAR Winner = CALCULATE(MAX('Session Result'[Race Time]), 'Session Result'[Position] = 1)
+						VAR Runner = CALCULATE(MAX('Session Result'[Race Time]), 'Session Result'[Position] = 2)
+						RETURN IF(NOT ISBLANK(Winner) && NOT ISBLANK(Runner), DIVIDE(Runner - Winner, 1000))
+				)
+			RETURN
+				MAXX(PerRace, [@Margin])
+		formatString: #,##0.000
+		displayFolder: 02 Aggregations
+		lineageTag: 0e5ad90d-12a6-4a9f-8cf3-ddee441a9bcb
+
+	/// Closest gap from winner to runner-up.
+	measure 'Min Winning Margin (s)' =
+			VAR PerRace =
+				ADDCOLUMNS(
+					SUMMARIZE('Session Result', 'Session Result'[Race Key]),
+					"@Margin",
+						VAR Winner = CALCULATE(MAX('Session Result'[Race Time]), 'Session Result'[Position] = 1)
+						VAR Runner = CALCULATE(MAX('Session Result'[Race Time]), 'Session Result'[Position] = 2)
+						RETURN IF(NOT ISBLANK(Winner) && NOT ISBLANK(Runner), DIVIDE(Runner - Winner, 1000))
+				)
+			RETURN
+				MINX(PerRace, [@Margin])
+		formatString: #,##0.000
+		displayFolder: 02 Aggregations
+		lineageTag: a291f35b-f12a-4af8-9a68-0c8262414b4e
+
+	/// Points gained in the latest round in context - the round-over-round change in a cumulative standings total. Blank when more than one season is in context.
+	measure 'Points Δ RoR (pts)' =
+			VAR CurrentSeason = SELECTEDVALUE('Race'[Season])
+			VAR LastRound = MAX('Race'[Round])
+			RETURN
+				IF(
+					NOT ISBLANK(CurrentSeason),
+					CALCULATE(
+						[Points (pts)],
+						REMOVEFILTERS('Race'),
+						'Race'[Season] = CurrentSeason,
+						'Race'[Round] = LastRound
+					)
+				)
+		formatString: +#,##0.##;-#,##0.##;0
+		displayFolder: 05 Variances
+		lineageTag: 8aa78e4f-c6b7-40bc-a427-850077aa6558
+
+	/// Championship position among the drivers currently selected.
+	measure 'Rank Drivers by Points (pos)' =
+			IF(
+				NOT ISBLANK([Points (pts)]),
+				RANKX(ALLSELECTED('Driver'), [Points (pts)], , DESC, Dense)
+			)
+		formatString: #,##0
+		displayFolder: 07 Ranks
+		lineageTag: 1fd0fd9e-9d1a-441b-9908-52de7af2271c
+
+	/// Constructors' championship position among the teams currently selected.
+	measure 'Rank Teams by Points (pos)' =
+			IF(
+				NOT ISBLANK([Points (pts)]),
+				RANKX(ALLSELECTED('Team'), [Points (pts)], , DESC, Dense)
+			)
+		formatString: #,##0
+		displayFolder: 07 Ranks
+		lineageTag: 203304dc-7202-4930-82ea-3c1e1fc71371
+
+	/// True for the earliest race not yet run, relative to the course as-of date.
+	///
+	/// COURSE BUILD: this deliberately does NOT use TODAY(). The data is a pinned
+	/// snapshot, so "next race" has to be pinned with it. With TODAY() the orange
+	/// NEXT card drifts through the calendar and then vanishes entirely once the
+	/// season is over, taking a demonstrable feature of the schedule page with it.
+	///
+	/// Change AsOf to move the snapshot; nothing else depends on the date.
+	/// In a production model you would use TODAY() here instead.
+	measure 'Is Next Race (flag)' =
+			VAR AsOf = DATE(2026, 8, 27)
+			VAR NextDate =
+				CALCULATE(
+					MIN('Race'[Race Date]),
+					REMOVEFILTERS('Race'),
+					'Race'[Race Date] >= AsOf
+				)
+			RETURN
+				SELECTEDVALUE('Race'[Race Date]) = NextDate
+		displayFolder: 08 Flags
+		lineageTag: bdf94b1c-7ebb-4af4-b700-457456b5bf44
+
+	/// Official livery colour for conditional formatting. Falls back to neutral grey when more than one team is in context.
+	measure 'Team Colour (hex)' =
+			VAR InContext = CALCULATETABLE(VALUES('Team'[Team Colour]), 'Session Result')
+			VAR N = COUNTROWS(InContext)
+			VAR LastKey = CALCULATE(MAX('Session Result'[Race Key]), 'Session Result')
+			VAR LatestKey =
+				CALCULATE(
+					SELECTEDVALUE('Session Result'[Team Key]),
+					'Session Result'[Race Key] = LastKey
+				)
+			VAR Latest = LOOKUPVALUE('Team'[Team Colour], 'Team'[Team Key], LatestKey)
+			RETURN
+				COALESCE(IF(N = 1, MAXX(InContext, 'Team'[Team Colour]), Latest), "#6B7280")
+		displayFolder: 09 Technical
+		lineageTag: cf99ab9e-8367-438c-9967-4fda8c383516
+
+	/// Cell text for the driver-by-round grid - points scored, or the retirement reason where the driver was not classified.
+	measure 'Points By Round (txt)' =
+			VAR Pts = [Points (pts)]
+			VAR PosText =
+				CALCULATE(
+					SELECTEDVALUE('Session Result'[Position Text]),
+					'Session Result'[Session Key] = "RACE"
+				)
+			VAR Label =
+				SWITCH(
+					PosText,
+					"R", "DNF",
+					"D", "DSQ",
+					"W", "DNS",
+					"N", "NC",
+					"F", "DNQ",
+					"E", "EX",
+					BLANK()
+				)
+			RETURN
+				IF(
+					NOT ISBLANK(PosText),
+					COALESCE(
+						Label,
+						IF(
+							Pts = TRUNC(Pts),
+							FORMAT(Pts, "#,##0"),
+							FORMAT(Pts, "#,##0.##")
+						)
+					)
+				)
+		displayFolder: 09 Technical
+		lineageTag: efd991d7-5caa-4390-ba14-b2e88985a5e2
+
+	/// Race weekend rendered as an SVG card for the Schedule page, mirroring the
+	/// HTML dashboard's card grid. Accent bar is green for completed, orange for
+	/// the next race, grey for upcoming.
+	measure 'Race Card (svg)' =
+			VAR Rnd = SELECTEDVALUE('Race'[Round])
+			VAR Nm = SUBSTITUTE(SELECTEDVALUE('Race'[Race Name]), "&", "and")
+			VAR Cir = SUBSTITUTE(SELECTEDVALUE('Race'[Circuit]), "&", "and")
+			VAR Loc = SELECTEDVALUE('Race'[Locality])
+			VAR Iso = SELECTEDVALUE('Race'[ISO Code])
+			VAR Done = SELECTEDVALUE('Race'[Is Completed])
+			VAR Spr = SELECTEDVALUE('Race'[Has Sprint])
+			VAR IsNext = [Is Next Race (flag)]
+			VAR Dates =
+			    FORMAT(SELECTEDVALUE('Race'[Weekend Start]), "d mmm")
+			        & " - " & FORMAT(SELECTEDVALUE('Race'[Race Date]), "d mmm")
+			VAR Winner =
+			    MAXX(
+			        FILTER(
+			            'Session Result',
+			            'Session Result'[Position] = 1
+			                && 'Session Result'[Session Key] = "RACE"
+			        ),
+			        RELATED('Driver'[Driver Code])
+			    )
+			VAR Accent = IF(Done, "#229971", IF(IsNext, "#FF8000", "#8A93A2"))
+			VAR StatusLabel = IF(Done, "COMPLETED", IF(IsNext, "NEXT", "UPCOMING"))
+			VAR Sprint =
+			    IF(
+			        Spr,
+			        "<rect x='450' y='44' width='76' height='19' rx='9' fill='#FFF3E6' stroke='#FF8000'/>"
+			            & "<text x='488' y='58' text-anchor='middle' font-family='Segoe UI' font-size='9' font-weight='600' fill='#FF8000'>SPRINT</text>",
+			        ""
+			    )
+			VAR WinnerBlock =
+			    IF(
+			        NOT ISBLANK(Winner),
+			        "<text x='470' y='98' text-anchor='end' font-family='Segoe UI' font-size='9' fill='#8A93A2'>WINNER</text>"
+			            & "<text x='526' y='98' text-anchor='end' font-family='Segoe UI' font-size='12' font-weight='700' fill='#1A1D23'>" & Winner & "</text>",
+			        ""
+			    )
+			RETURN
+			    IF(
+			        NOT ISBLANK(Rnd),
+			        "data:image/svg+xml;utf8,"
+			            & "<svg xmlns='http://www.w3.org/2000/svg' width='548' height='112'>"
+			            & "<rect x='1' y='1' width='546' height='110' rx='8' fill='#FFFFFF' stroke='#E4E8EE'/>"
+			            & "<rect x='1' y='1' width='6' height='110' fill='" & Accent & "'/>"
+			            & "<text x='26' y='46' font-family='Segoe UI' font-size='26' font-weight='600' fill='#1A1D23'>R" & FORMAT(Rnd, "0") & "</text>"
+			            & "<text x='26' y='70' font-family='Segoe UI' font-size='12' font-weight='600' fill='#8A93A2'>" & Iso & "</text>"
+			            & "<text x='102' y='38' font-family='Segoe UI' font-size='16' font-weight='600' fill='#1A1D23'>" & Nm & "</text>"
+			            & "<text x='102' y='60' font-family='Segoe UI' font-size='12' fill='#5A6472'>" & Cir & " - " & Loc & "</text>"
+			            & "<text x='102' y='80' font-family='Segoe UI' font-size='11' fill='#8A93A2'>" & Dates & "</text>"
+			            & "<text x='526' y='32' text-anchor='end' font-family='Segoe UI' font-size='10' font-weight='600' fill='" & Accent & "'>" & StatusLabel & "</text>"
+			            & Sprint
+			            & WinnerBlock
+			            & "</svg>"
+			    )
+		displayFolder: 09 Technical
+		lineageTag: a6d482ee-7bd6-45d4-ba0c-39f6942c3b76
+		dataCategory: ImageUrl
+
+	/// Driver rendered as an SVG card for the Drivers page. The API serves no
+	/// driver photos, so the card leads with the three-letter code and the number,
+	/// with the team colour as an accent bar rather than as the whole background.
+	///
+	/// Sized 408 x 153 to the 4 x 6 grid's tile, with NO viewBox. The card grid
+	/// scales an SVG to fill its tile and crops the overflow centred, so a card
+	/// whose aspect differs from the tile's silently loses its top and bottom
+	/// bands - which reads as a styling problem rather than a broken card. Change
+	/// the grid and this width and height change with it.
+	///
+	/// Counts format as integers and averages always to one decimal: a single
+	/// "#,##0.##" through FORMAT emits the "." as a literal, so whole numbers come
+	/// out as "242." - and an average of exactly 2 printed as "2" beside a "3.9"
+	/// reads as a glitch.
+	///
+	/// Blank when the driver has no race entry in context, so reserve drivers drop
+	/// out of the grid instead of rendering as empty tiles.
+	measure 'Driver Card (svg)' =
+			VAR CodeNow = SELECTEDVALUE('Driver'[Driver Code])
+			VAR Entries = [Distinct Races (#)]
+			VAR NameText = SUBSTITUTE(SELECTEDVALUE('Driver'[Driver Name]), "&", "and")
+			VAR NumberNow = SELECTEDVALUE('Driver'[Permanent Number])
+			VAR NumberText = IF(ISBLANK(NumberNow), "", FORMAT(NumberNow, "#,##0"))
+			VAR Colour = [Team Colour (hex)]
+			VAR TeamText = SUBSTITUTE([Team (txt)], "&", "and")
+			VAR PointsText = FORMAT([Points (pts)] + 0, "#,##0")
+			VAR WinsNow = CALCULATE([Wins (#)], 'Session Result'[Session Key] = "RACE")
+			VAR WinsText = FORMAT(WinsNow + 0, "#,##0")
+			VAR PodiumsNow = CALCULATE([Podiums (#)], 'Session Result'[Session Key] = "RACE")
+			VAR PodiumsText = FORMAT(PodiumsNow + 0, "#,##0")
+			VAR AvgFinNow = [Average Finish (pos)]
+			VAR AvgFinText = IF(ISBLANK(AvgFinNow), "-", FORMAT(AvgFinNow, "#,##0.0"))
+			VAR AvgQuaNow = [Average Qualifying (pos)]
+			VAR AvgQuaText = IF(ISBLANK(AvgQuaNow), "-", FORMAT(AvgQuaNow, "#,##0.0"))
+			VAR Font = "font-family='Segoe UI,Arial,sans-serif'"
+			VAR Ink = "#1A1D23"
+			VAR Muted = "#5A6472"
+			VAR Faint = "#8A93A2"
+			VAR Line = "#E4E8EE"
+			RETURN
+			    IF(
+			        NOT ISBLANK(CodeNow) && Entries > 0,
+			        "data:image/svg+xml;utf8,"
+			            & "<svg xmlns='http://www.w3.org/2000/svg' width='408' height='153'>"
+			            & "<rect x='10' y='2' width='388' height='149' rx='12' fill='#FFFFFF' stroke='" & Line & "' stroke-width='1'/>"
+			            & "<rect x='10' y='2' width='5' height='149' rx='2.5' fill='" & Colour & "'/>"
+			            & "<text x='30' y='42' " & Font & " font-size='30' font-weight='800' fill='" & Colour & "' letter-spacing='1'>" & CodeNow & "</text>"
+			            & "<text x='382' y='42' text-anchor='end' " & Font & " font-size='30' font-weight='800' fill='" & Colour & "'>" & NumberText & "</text>"
+			            & "<text x='30' y='66' " & Font & " font-size='14' font-weight='700' fill='" & Ink & "'>" & NameText & "</text>"
+			            & "<text x='30' y='84' " & Font & " font-size='11' font-weight='600' fill='" & Muted & "'>" & TeamText & "</text>"
+			            & "<rect x='30' y='96' width='352' height='1' fill='" & Line & "'/>"
+			            & "<text x='30' y='115' " & Font & " font-size='7.5' font-weight='700' fill='" & Faint & "' letter-spacing='0.5'>PTS</text>"
+			            & "<text x='101' y='115' " & Font & " font-size='7.5' font-weight='700' fill='" & Faint & "' letter-spacing='0.5'>WINS</text>"
+			            & "<text x='172' y='115' " & Font & " font-size='7.5' font-weight='700' fill='" & Faint & "' letter-spacing='0.5'>PODIUMS</text>"
+			            & "<text x='243' y='115' " & Font & " font-size='7.5' font-weight='700' fill='" & Faint & "' letter-spacing='0.5'>AVG FIN</text>"
+			            & "<text x='314' y='115' " & Font & " font-size='7.5' font-weight='700' fill='" & Faint & "' letter-spacing='0.5'>AVG QUA</text>"
+			            & "<text x='30' y='136' " & Font & " font-size='15' font-weight='700' fill='" & Ink & "'>" & PointsText & "</text>"
+			            & "<text x='101' y='136' " & Font & " font-size='15' font-weight='700' fill='" & Ink & "'>" & WinsText & "</text>"
+			            & "<text x='172' y='136' " & Font & " font-size='15' font-weight='700' fill='" & Ink & "'>" & PodiumsText & "</text>"
+			            & "<text x='243' y='136' " & Font & " font-size='15' font-weight='700' fill='" & Ink & "'>" & AvgFinText & "</text>"
+			            & "<text x='314' y='136' " & Font & " font-size='15' font-weight='700' fill='" & Ink & "'>" & AvgQuaText & "</text>"
+			            & "</svg>"
+			    )
+		displayFolder: 09 Technical
+		lineageTag: aa96062d-7114-4988-8565-972c6f3d2f8f
+		dataCategory: ImageUrl
+
+	/// Constructor rendered as an SVG card for the Teams page. A full-height
+	/// livery block carries the championship position; the lineup is read from
+	/// whichever drivers actually scored for the team in context, so a mid-season
+	/// switcher appears against both of their teams.
+	///
+	/// Sized 548 x 235 to the 3 x 4 grid's tile, with NO viewBox. The card grid
+	/// scales an SVG to fill its tile and crops the overflow centred, so a card
+	/// whose aspect differs from the tile's silently loses its top and bottom
+	/// bands. Change the grid and this width and height change with it.
+	///
+	/// Counts format as integers: a single "#,##0.##" through FORMAT emits the "."
+	/// as a literal, so whole numbers come out as "425."
+	measure 'Team Card (svg)' =
+			VAR NameRaw = SELECTEDVALUE('Team'[Team Name])
+			VAR NameText = SUBSTITUTE(NameRaw, "&", "and")
+			VAR NationText = SUBSTITUTE(SELECTEDVALUE('Team'[Nationality]), "&", "and")
+			VAR Entries = [Distinct Races (#)]
+			VAR Colour = SELECTEDVALUE('Team'[Team Colour], "#6B7280")
+			VAR PosNow = [Rank Teams by Points (pos)]
+			VAR PosText = IF(ISBLANK(PosNow), "-", "P" & FORMAT(PosNow, "#,##0"))
+			VAR PointsText = FORMAT([Points (pts)] + 0, "#,##0")
+			VAR WinsNow = CALCULATE([Wins (#)], 'Session Result'[Session Key] = "RACE")
+			VAR WinsText = FORMAT(WinsNow + 0, "#,##0")
+			VAR PodiumsNow = CALCULATE([Podiums (#)], 'Session Result'[Session Key] = "RACE")
+			VAR PodiumsText = FORMAT(PodiumsNow + 0, "#,##0")
+			VAR PolesText = FORMAT([Poles (#)] + 0, "#,##0")
+			VAR Lineup =
+			    CONCATENATEX(
+			        CALCULATETABLE(VALUES('Driver'[Driver Code]), 'Session Result'),
+			        'Driver'[Driver Code],
+			        "   ",
+			        'Driver'[Driver Code],
+			        ASC
+			    )
+			VAR Font = "font-family='Segoe UI,Arial,sans-serif'"
+			VAR Ink = "#1A1D23"
+			VAR Muted = "#5A6472"
+			VAR Faint = "#8A93A2"
+			VAR Line = "#E4E8EE"
+			RETURN
+			    IF(
+			        NOT ISBLANK(NameRaw) && Entries > 0,
+			        "data:image/svg+xml;utf8,"
+			            & "<svg xmlns='http://www.w3.org/2000/svg' width='548' height='235'>"
+			            & "<rect x='8' y='1' width='532' height='233' rx='14' fill='#FFFFFF' stroke='" & Line & "' stroke-width='1'/>"
+			            & "<rect x='8' y='1' width='170' height='233' rx='14' fill='" & Colour & "'/>"
+			            & "<rect x='120' y='1' width='58' height='233' fill='" & Colour & "'/>"
+			            & "<text x='93' y='132' text-anchor='middle' " & Font & " font-size='64' font-weight='800' fill='#FFFFFF'>" & PosText & "</text>"
+			            & "<text x='93' y='158' text-anchor='middle' " & Font & " font-size='9' font-weight='700' fill='#FFFFFF' fill-opacity='0.85' letter-spacing='1.5'>CONSTRUCTOR</text>"
+			            & "<text x='198' y='48' " & Font & " font-size='30' font-weight='800' fill='" & Ink & "'>" & NameText & "</text>"
+			            & "<text x='198' y='70' " & Font & " font-size='12' font-weight='600' fill='" & Muted & "'>" & NationText & "</text>"
+			            & "<text x='198' y='126' " & Font & " font-size='46' font-weight='800' fill='" & Ink & "'>" & PointsText & "</text>"
+			            & "<text x='198' y='146' " & Font & " font-size='9' font-weight='700' fill='" & Faint & "' letter-spacing='1.5'>POINTS</text>"
+			            & "<rect x='198' y='160' width='330' height='1' fill='" & Line & "'/>"
+			            & "<text x='198' y='180' " & Font & " font-size='8.5' font-weight='700' fill='" & Faint & "' letter-spacing='1'>WINS</text>"
+			            & "<text x='308' y='180' " & Font & " font-size='8.5' font-weight='700' fill='" & Faint & "' letter-spacing='1'>PODIUMS</text>"
+			            & "<text x='418' y='180' " & Font & " font-size='8.5' font-weight='700' fill='" & Faint & "' letter-spacing='1'>POLES</text>"
+			            & "<text x='198' y='202' " & Font & " font-size='20' font-weight='700' fill='" & Ink & "'>" & WinsText & "</text>"
+			            & "<text x='308' y='202' " & Font & " font-size='20' font-weight='700' fill='" & Ink & "'>" & PodiumsText & "</text>"
+			            & "<text x='418' y='202' " & Font & " font-size='20' font-weight='700' fill='" & Ink & "'>" & PolesText & "</text>"
+			            & "<text x='198' y='222' " & Font & " font-size='8.5' font-weight='700' fill='" & Faint & "' letter-spacing='1'>LINEUP</text>"
+			            & "<text x='250' y='223' " & Font & " font-size='13' font-weight='700' fill='" & Ink & "' letter-spacing='1'>" & Lineup & "</text>"
+			            & "</svg>"
+			    )
+		displayFolder: 09 Technical
+		lineageTag: 3c8e2143-20c7-4a78-8508-e1210e70acc0
+		dataCategory: ImageUrl
+
+	/// The driver's team, as a measure rather than a column, so a standings table
+	/// groups by driver alone. Liam Lawson changed team mid-2026: with Team as a
+	/// column he occupies two rows of the championship. Falls back to the team of
+	/// his latest round in context when more than one applies.
+	measure 'Team (txt)' =
+			VAR TeamsInContext = CALCULATETABLE(VALUES('Team'[Team Name]), 'Session Result')
+			VAR N = COUNTROWS(TeamsInContext)
+			VAR LastKey = CALCULATE(MAX('Session Result'[Race Key]), 'Session Result')
+			VAR LatestKey =
+				CALCULATE(
+					SELECTEDVALUE('Session Result'[Team Key]),
+					'Session Result'[Race Key] = LastKey
+				)
+			VAR Latest = LOOKUPVALUE('Team'[Team Name], 'Team'[Team Key], LatestKey)
+			RETURN
+				IF(N = 1, MAXX(TeamsInContext, 'Team'[Team Name]), Latest)
+		displayFolder: 09 Technical
+		lineageTag: ac250a03-6cb1-4673-a56c-22e88b28f76f
+
+	column 'Race Key'
+		dataType: string
+		isHidden
+		lineageTag: 0fb7d1d6-0d5e-4289-895c-cca8a4bb9a50
+		summarizeBy: none
+		sourceColumn: Race Key
+
+	column 'Session Key'
+		dataType: string
+		isHidden
+		lineageTag: 90161b63-6994-42e6-85cb-6c9f60014cf2
+		summarizeBy: none
+		sourceColumn: Session Key
+
+	column 'Driver Key'
+		dataType: string
+		isHidden
+		lineageTag: 4b3fbb11-ac37-4c4a-9c97-cebb329b9808
+		summarizeBy: none
+		sourceColumn: Driver Key
+
+	column 'Team Key'
+		dataType: string
+		isHidden
+		lineageTag: d28d7f18-3a69-43b0-a098-dca706a2c951
+		summarizeBy: none
+		sourceColumn: Team Key
+
+	/// Blank when the driver was not classified; Position Text carries R, D, W and friends.
+	column Position
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 5e4f4013-e253-45d6-80b8-1df2160f7028
+		summarizeBy: none
+		sourceColumn: Position
+
+	column 'Position Text'
+		dataType: string
+		isHidden
+		lineageTag: 3876381b-c935-43f1-b89b-701b48e967e7
+		summarizeBy: none
+		sourceColumn: Position Text
+
+	/// 0 means a pit-lane start, which is why the grid measures filter it out.
+	column 'Grid Position'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 9c9e2cb8-dba7-4c5d-9168-38904b2a7ed8
+		summarizeBy: none
+		sourceColumn: Grid Position
+
+	column Points
+		dataType: double
+		isHidden
+		lineageTag: 0d995b6f-aa21-4dbb-8469-52cc8045d27c
+		summarizeBy: sum
+		sourceColumn: Points
+
+	column Status
+		dataType: string
+		isHidden
+		lineageTag: dac407f2-20bc-407e-9e0e-f5f8a7fdbf5d
+		summarizeBy: none
+		sourceColumn: Status
+
+	/// Total elapsed race time in milliseconds, blank for anyone lapped or retired.
+	column 'Race Time'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: ba7512ee-eb93-4f9a-b4a5-d2da7d77f9b1
+		summarizeBy: none
+		sourceColumn: Race Time
+
+	column Laps
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 0c136154-e319-4d52-9199-aca284cf92ec
+		summarizeBy: none
+		sourceColumn: Laps
+
+	partition 'Session Result' = m
+		mode: import
+		source =
+				let
+					Source = LoadCsv("Session Result.csv"),
+					Typed = Table.TransformColumnTypes(
+						Source,
+						{
+							{"Race Key", type text},
+							{"Session Key", type text},
+							{"Driver Key", type text},
+							{"Team Key", type text},
+							{"Position", Int64.Type},
+							{"Position Text", type text},
+							{"Grid Position", Int64.Type},
+							{"Points", type number},
+							{"Status", type text},
+							{"Race Time", Int64.Type},
+							{"Laps", Int64.Type}
+						},
+						"en-US"
+					)
+				in
+					Typed
+

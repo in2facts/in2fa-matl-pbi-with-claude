@@ -1,0 +1,179 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "v30Standings",
+  "position": {
+    "x": 252,
+    "y": 104,
+    "z": 2000,
+    "width": 1668,
+    "height": 976,
+    "tabOrder": 50
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Session Result"
+                    }
+                  },
+                  "Property": "Rank Teams by Points (pos)"
+                }
+              },
+              "queryRef": "Session Result.Rank Teams by Points (pos)",
+              "nativeQueryRef": "Rank Teams by Points (pos)",
+              "active": true,
+              "displayName": "Pos"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Team"
+                    }
+                  },
+                  "Property": "Team Name"
+                }
+              },
+              "queryRef": "Team.Team Name",
+              "nativeQueryRef": "Team Name",
+              "active": true,
+              "displayName": "Constructor"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Session Result"
+                    }
+                  },
+                  "Property": "Points (pts)"
+                }
+              },
+              "queryRef": "Session Result.Points (pts)",
+              "nativeQueryRef": "Points (pts)",
+              "active": true
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Session Result"
+                    }
+                  },
+                  "Property": "Points Δ RoR (pts)"
+                }
+              },
+              "queryRef": "Session Result.Points Δ RoR (pts)",
+              "nativeQueryRef": "Points Δ RoR (pts)",
+              "active": true
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Session Result"
+                    }
+                  },
+                  "Property": "Wins (#)"
+                }
+              },
+              "queryRef": "Session Result.Wins (#)",
+              "nativeQueryRef": "Wins (#)",
+              "active": true
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Session Result"
+                    }
+                  },
+                  "Property": "Podiums (#)"
+                }
+              },
+              "queryRef": "Session Result.Podiums (#)",
+              "nativeQueryRef": "Podiums (#)",
+              "active": true
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Qualifying Result"
+                    }
+                  },
+                  "Property": "Poles (#)"
+                }
+              },
+              "queryRef": "Qualifying Result.Poles (#)",
+              "nativeQueryRef": "Poles (#)",
+              "active": true
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Session Result"
+                    }
+                  },
+                  "Property": "Average Finish (pos)"
+                }
+              },
+              "queryRef": "Session Result.Average Finish (pos)",
+              "nativeQueryRef": "Average Finish (pos)",
+              "active": true
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Session Result"
+                  }
+                },
+                "Property": "Rank Teams by Points (pos)"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "objects": {
+      "total": [
+        {
+          "properties": {
+            "totals": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

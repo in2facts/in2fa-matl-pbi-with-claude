@@ -1,0 +1,94 @@
+/// One row per driver per qualifying session. Kept separate from Session Result
+/// because qualifying has a different shape - segment times, no points - and
+/// folding it in would leave both halves of the fact sparse.
+table 'Qualifying Result'
+	lineageTag: bcea9f64-7b13-4f08-9561-082398d83863
+
+	/// Pole positions - first place in qualifying.
+	measure 'Poles (#)' = CALCULATE(COUNTROWS('Qualifying Result'), 'Qualifying Result'[Qualifying Position] = 1)
+		formatString: #,##0
+		displayFolder: 01 Base Measures
+		lineageTag: dd863eaa-3b09-4c1e-8ae4-66a8165870f0
+
+	/// Mean qualifying position across the sessions in context.
+	measure 'Average Qualifying (pos)' = AVERAGE('Qualifying Result'[Qualifying Position])
+		formatString: #,##0.0
+		displayFolder: 02 Aggregations
+		lineageTag: c79a108b-4c33-4c21-a860-b1ee5203c0fb
+
+	column 'Race Key'
+		dataType: string
+		isHidden
+		lineageTag: 337181db-80c3-404b-9e86-45d7ff5cb6fd
+		summarizeBy: none
+		sourceColumn: Race Key
+
+	column 'Driver Key'
+		dataType: string
+		isHidden
+		lineageTag: 4bc0c24b-e2bc-4574-a167-54a5084ca780
+		summarizeBy: none
+		sourceColumn: Driver Key
+
+	column 'Team Key'
+		dataType: string
+		isHidden
+		lineageTag: 488b10b5-3d8d-4e72-b8c3-e8d8e43eaeb8
+		summarizeBy: none
+		sourceColumn: Team Key
+
+	column 'Qualifying Position'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 574c5b34-1735-4dc9-910a-192853299fc6
+		summarizeBy: none
+		sourceColumn: Qualifying Position
+
+	/// Segment times in milliseconds. Blank where the driver did not set a time
+	/// or was eliminated before that segment.
+	column Q1
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: d408517d-35f6-497a-9532-d131135525e5
+		summarizeBy: none
+		sourceColumn: Q1
+
+	column Q2
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 28b653c1-876d-4799-9ac5-d297f81b2d4a
+		summarizeBy: none
+		sourceColumn: Q2
+
+	column Q3
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: cd57c072-d229-4864-9d60-db7c95600cdf
+		summarizeBy: none
+		sourceColumn: Q3
+
+	partition 'Qualifying Result' = m
+		mode: import
+		source =
+				let
+					Source = LoadCsv("Qualifying Result.csv"),
+					Typed = Table.TransformColumnTypes(
+						Source,
+						{
+							{"Race Key", type text},
+							{"Driver Key", type text},
+							{"Team Key", type text},
+							{"Qualifying Position", Int64.Type},
+							{"Q1", Int64.Type},
+							{"Q2", Int64.Type},
+							{"Q3", Int64.Type}
+						},
+						"en-US"
+					)
+				in
+					Typed
+

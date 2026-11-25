@@ -1,0 +1,32 @@
+relationship session_result_to_race
+	fromColumn: 'Session Result'.'Race Key'
+	toColumn: Race.'Race Key'
+
+relationship session_result_to_driver
+	fromColumn: 'Session Result'.'Driver Key'
+	toColumn: Driver.'Driver Key'
+
+relationship session_result_to_team
+	fromColumn: 'Session Result'.'Team Key'
+	toColumn: Team.'Team Key'
+
+relationship session_result_to_session
+	fromColumn: 'Session Result'.'Session Key'
+	toColumn: Session.'Session Key'
+
+relationship qualifying_result_to_race
+	fromColumn: 'Qualifying Result'.'Race Key'
+	toColumn: Race.'Race Key'
+
+relationship qualifying_result_to_driver
+	fromColumn: 'Qualifying Result'.'Driver Key'
+	toColumn: Driver.'Driver Key'
+
+relationship qualifying_result_to_team
+	fromColumn: 'Qualifying Result'.'Team Key'
+	toColumn: Team.'Team Key'
+
+relationship race_to_calendar
+	fromColumn: Race.'Race Date'
+	toColumn: Calendar.Date
+

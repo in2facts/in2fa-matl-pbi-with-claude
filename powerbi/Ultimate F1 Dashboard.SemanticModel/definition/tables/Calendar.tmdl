@@ -1,0 +1,73 @@
+/// Contiguous calendar spanning the full years of every loaded season, derived from Race so it extends automatically when a season is added. Related to Race rather than to the fact tables: the calendar describes the race weekend, not the individual result row.
+table Calendar
+	lineageTag: 330d06f6-4021-491f-9fb3-b7c6ce48f4ca
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		summarizeBy: none
+		isKey
+		formatString: yyyy-mm-dd
+		lineageTag: ed28a8cc-7991-46c4-a431-959421bfda99
+		sourceColumn: Date
+
+	column Year
+		dataType: int64
+		summarizeBy: none
+		lineageTag: bc559f5d-7f98-43dd-a32c-f4129e0ccb16
+		sourceColumn: Year
+
+	column 'Month Number'
+		dataType: int64
+		summarizeBy: none
+		lineageTag: 822d72a0-0172-48ee-89aa-8df560c771e8
+		sourceColumn: Month Number
+
+	column 'Month Name'
+		dataType: string
+		summarizeBy: none
+		lineageTag: 82f21627-9d9a-421c-866a-cd6e8e521808
+		sourceColumn: Month Name
+		sortByColumn: 'Month Number'
+
+	column Quarter
+		dataType: string
+		summarizeBy: none
+		lineageTag: 796eb124-f30c-4bda-ac87-7895085ef640
+		sourceColumn: Quarter
+
+	column Day
+		dataType: int64
+		summarizeBy: none
+		lineageTag: 0dcbcc18-bd0a-4d8a-8322-d969b14dc815
+		sourceColumn: Day
+
+	partition Calendar = m
+		mode: import
+		source =
+				let
+					// Span taken from the race schedule, so adding a season extends the
+					// calendar without anyone editing this. Built in Power Query rather
+					// than as a DAX calculated table: a calculated table depending on
+					// another table is empty until the whole model refreshes, which showed
+					// a nonsense one-year range on first open and cost an afternoon.
+					Races = LoadCsv("Race.csv"),
+					Dates = Table.TransformColumnTypes(Races, {{"Race Date", type date}}),
+					First = Date.StartOfYear(List.Min(Dates[Race Date])),
+					Last = Date.EndOfYear(List.Max(Dates[Race Date])),
+					Span = Duration.Days(Last - First) + 1,
+					Days = List.Dates(First, Span, #duration(1, 0, 0, 0)),
+					AsTable = Table.FromList(Days, Splitter.SplitByNothing(), {"Date"}),
+					Typed = Table.TransformColumnTypes(AsTable, {{"Date", type date}}),
+					WithParts = Table.AddColumn(
+						Table.AddColumn(
+							Table.AddColumn(
+								Table.AddColumn(
+									Table.AddColumn(Typed, "Year", each Date.Year([Date]), Int64.Type),
+									"Month Number", each Date.Month([Date]), Int64.Type),
+								"Month Name", each Date.MonthName([Date]), type text),
+							"Quarter", each "Q" & Text.From(Date.QuarterOfYear([Date])), type text),
+						"Day", each Date.Day([Date]), Int64.Type)
+				in
+					WithParts
+

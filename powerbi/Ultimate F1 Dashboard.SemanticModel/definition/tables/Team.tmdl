@@ -1,0 +1,56 @@
+/// One row per constructor. Named Team throughout the model; "Constructor"
+/// survives only as the title of the standings page, matching how F1 itself
+/// splits the colloquial and championship terms.
+table Team
+	lineageTag: 7a4745a8-b593-4cef-aba1-dd47f617c018
+
+	column 'Team Key'
+		dataType: string
+		isHidden
+		isKey
+		lineageTag: 439f8225-f0bb-4c33-93b9-2a6cea209fe1
+		summarizeBy: none
+		sourceColumn: Team Key
+
+	column 'Team Name'
+		dataType: string
+		lineageTag: 9f3c0144-e529-4f1f-926b-e03d4c511a79
+		summarizeBy: none
+		sourceColumn: Team Name
+
+	column Nationality
+		dataType: string
+		lineageTag: 3339cd66-5627-4ecd-9963-1ddf98ac6bdc
+		summarizeBy: none
+		sourceColumn: Nationality
+
+	/// Hex livery colour, hand-maintained in build.py. Deliberately VISIBLE: a
+	/// self-service user building their own visual needs the colour to hand, for
+	/// conditional formatting or a custom SVG, without having to go through the
+	/// Team Colour (hex) measure. Do not hide this - it has been hidden twice by
+	/// mistake, on the assumption that a presentation column always belongs
+	/// behind a measure.
+	column 'Team Colour'
+		dataType: string
+		lineageTag: 8217e0c2-b9e3-418b-84c8-6307888adcdb
+		summarizeBy: none
+		sourceColumn: Team Colour
+
+	partition Team = m
+		mode: import
+		source =
+				let
+					Source = LoadCsv("Team.csv"),
+					Typed = Table.TransformColumnTypes(
+						Source,
+						{
+							{"Team Key", type text},
+							{"Team Name", type text},
+							{"Nationality", type text},
+							{"Team Colour", type text}
+						},
+						"en-US"
+					)
+				in
+					Typed
+

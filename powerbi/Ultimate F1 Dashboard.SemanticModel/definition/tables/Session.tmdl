@@ -1,0 +1,45 @@
+/// Two rows - Race and Sprint. The API returns both with identical fields, so
+/// they load into one fact table and this dimension is what separates them.
+table Session
+	lineageTag: cbed436f-397d-476f-b92d-1fdfd9cff5f2
+
+	column 'Session Key'
+		dataType: string
+		isHidden
+		isKey
+		lineageTag: 54dce47a-5c38-4cbb-9e3d-71874770966c
+		summarizeBy: none
+		sourceColumn: Session Key
+
+	column Session
+		dataType: string
+		lineageTag: 00d017f9-0937-4712-9055-4576ae6868f6
+		summarizeBy: none
+		sourceColumn: Session
+		sortByColumn: 'Session Order'
+
+	column 'Session Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 1955064b-c111-4707-a3e6-980af7e108cd
+		summarizeBy: none
+		sourceColumn: Session Order
+
+	partition Session = m
+		mode: import
+		source =
+				let
+					Source = LoadCsv("Session.csv"),
+					Typed = Table.TransformColumnTypes(
+						Source,
+						{
+							{"Session Key", type text},
+							{"Session", type text},
+							{"Session Order", Int64.Type}
+						},
+						"en-US"
+					)
+				in
+					Typed
+

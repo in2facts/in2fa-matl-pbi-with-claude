@@ -1,0 +1,154 @@
+/// One row per Grand Prix weekend. Round is only unique inside a season, so
+/// Race Key carries the season with it. Circuit attributes are folded in here
+/// rather than snowflaked into their own dimension.
+table Race
+	lineageTag: c3af0d3f-5822-4f23-9f85-7ea492169ccb
+
+	column 'Race Key'
+		dataType: string
+		isHidden
+		isKey
+		lineageTag: 042b0bc6-cd6c-4451-9c36-144151797a12
+		summarizeBy: none
+		sourceColumn: Race Key
+
+	column Season
+		dataType: int64
+		formatString: 0
+		lineageTag: 25f45149-1012-430d-89cb-6cb13a07a14e
+		summarizeBy: none
+		sourceColumn: Season
+
+	column Round
+		dataType: int64
+		formatString: 0
+		lineageTag: 2b492d63-7c16-4b7e-8b39-676e4ea3906b
+		summarizeBy: none
+		sourceColumn: Round
+
+	column 'Race Name'
+		dataType: string
+		lineageTag: 4aac10c9-96b2-42ef-83fd-ef4478125341
+		summarizeBy: none
+		sourceColumn: Race Name
+
+	column Circuit
+		dataType: string
+		lineageTag: 6aae4867-ebeb-43f8-b6cf-9bb59ebecc67
+		summarizeBy: none
+		sourceColumn: Circuit
+
+	column 'Circuit Key'
+		dataType: string
+		isHidden
+		lineageTag: 1f60d1d7-5f30-4420-a279-14056e65d51b
+		summarizeBy: none
+		sourceColumn: Circuit Key
+
+	column Locality
+		dataType: string
+		lineageTag: 8e233c66-0135-47ab-936e-5604c81c581e
+		dataCategory: City
+		summarizeBy: none
+		sourceColumn: Locality
+
+	column Country
+		dataType: string
+		lineageTag: c034f743-fd32-47d4-a86c-eef01925ad6f
+		dataCategory: Country
+		summarizeBy: none
+		sourceColumn: Country
+
+	column 'ISO Code'
+		dataType: string
+		lineageTag: 0704ee4a-bb10-490a-ad22-d9293462c30d
+		summarizeBy: none
+		sourceColumn: ISO Code
+
+	column Latitude
+		dataType: double
+		lineageTag: cf1f70ab-be0e-4c30-a710-b074d08b2843
+		dataCategory: Latitude
+		summarizeBy: none
+		sourceColumn: Latitude
+
+	column Longitude
+		dataType: double
+		lineageTag: 51a3e487-5f68-4dd2-b6ac-b1f60de5a1ad
+		dataCategory: Longitude
+		summarizeBy: none
+		sourceColumn: Longitude
+
+	column 'Race Date'
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 4df6fddd-6385-4d98-8e0d-407296001985
+		summarizeBy: none
+		sourceColumn: Race Date
+
+	column 'Weekend Start'
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 1328fdae-0148-4469-9c6b-361e7433a694
+		summarizeBy: none
+		sourceColumn: Weekend Start
+
+	column 'Has Sprint'
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 9e5a7a16-1a7f-4239-986b-7ed71eefb646
+		summarizeBy: none
+		sourceColumn: Has Sprint
+
+	column 'Is Completed'
+		dataType: boolean
+		formatString: """TRUE"";""TRUE"";""FALSE"""
+		lineageTag: 087a97d3-add3-41cf-a23e-6a97a02f92bd
+		summarizeBy: none
+		sourceColumn: Is Completed
+
+	hierarchy 'Season Round'
+		lineageTag: 9129d72a-d3b7-4c7c-8feb-d7ff76643dce
+
+		level Season
+			lineageTag: 51b171a8-1c42-4a90-a671-9b784401ff7f
+			column: Season
+
+		level Round
+			lineageTag: f388634e-0c46-4b0a-b261-94c5cd14b3bf
+			column: Round
+
+	partition Race = m
+		mode: import
+		source =
+				let
+					Source = LoadCsv("Race.csv"),
+					Flags = Table.TransformColumns(
+						Source,
+						{
+							{"Has Sprint", each _ = "TRUE", type logical},
+							{"Is Completed", each _ = "TRUE", type logical}
+						}
+					),
+					Typed = Table.TransformColumnTypes(
+						Flags,
+						{
+							{"Race Key", type text},
+							{"Season", Int64.Type},
+							{"Round", Int64.Type},
+							{"Race Name", type text},
+							{"Circuit", type text},
+							{"Circuit Key", type text},
+							{"Locality", type text},
+							{"Country", type text},
+							{"ISO Code", type text},
+							{"Latitude", type number},
+							{"Longitude", type number},
+							{"Race Date", type date},
+							{"Weekend Start", type date}
+						},
+						"en-US"
+					)
+				in
+					Typed
+

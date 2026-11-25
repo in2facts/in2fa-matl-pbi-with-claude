@@ -1,0 +1,36 @@
+/// Folder holding the CSVs written by export_csv.py.
+///
+/// This is the ONLY machine-specific value in the model, and it has to be an
+/// absolute path: Power Query has no notion of a location relative to the
+/// project. So it will be wrong in any clone but the one it was authored in.
+///
+/// Do not edit it by hand. Run this instead, from the repository root:
+///
+///     python scripts/set_data_folder.py
+///
+/// It rewrites this line to wherever the repository actually is, and it is safe
+/// to re-run after moving the folder.
+///
+/// If a refresh fails with a file-not-found on a CSV, this is why - check it
+/// before looking anywhere else.
+expression Parameter_DataFolder = "C:\repos\in2fa-training-f1-dashboard\powerbi\data" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 2393af92-bda0-4515-9d58-eb55812288bd
+
+/// Single place where CSV loading is defined, so every table reads its file the
+/// same way. Encoding 65001 is explicit because the exporter writes BOM-less
+/// UTF-8: without it, accented driver names arrive mangled.
+expression LoadCsv =
+		let
+			Load = (fileName as text) as table =>
+				let
+					Source = Csv.Document(
+						File.Contents(Parameter_DataFolder & "\" & fileName),
+						[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+					),
+					Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true])
+				in
+					Promoted
+		in
+			Load
+	lineageTag: eb0d6f0d-9230-411d-b4fa-229f8fcc51f5
+

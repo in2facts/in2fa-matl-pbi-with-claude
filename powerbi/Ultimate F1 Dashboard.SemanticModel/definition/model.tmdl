@@ -5,3 +5,11 @@ model model
 
 annotation PBI_ProTooling = ["DevMode"]
 
+ref table Race
+ref table Driver
+ref table Team
+ref table Session
+ref table 'Session Result'
+ref table 'Qualifying Result'
+ref table Calendar
+

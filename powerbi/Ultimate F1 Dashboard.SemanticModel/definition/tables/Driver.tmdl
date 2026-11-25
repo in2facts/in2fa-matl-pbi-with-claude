@@ -1,0 +1,78 @@
+/// One row per driver, conformed across every loaded season. A driver's team is
+/// a property of each result, not of the driver, so it lives on the fact tables.
+table Driver
+	lineageTag: fcea9c60-3eb4-4f21-b5d1-2a06d525a734
+
+	column 'Driver Key'
+		dataType: string
+		isHidden
+		isKey
+		lineageTag: b670cb34-e136-4005-8eb8-2d90fce91306
+		summarizeBy: none
+		sourceColumn: Driver Key
+
+	column 'Driver Code'
+		dataType: string
+		lineageTag: 142f79ba-b99a-4273-b6f8-bf617f053183
+		summarizeBy: none
+		sourceColumn: Driver Code
+
+	column 'Driver Name'
+		dataType: string
+		lineageTag: bb8bcee5-8900-4603-a5fe-e15d2000e490
+		summarizeBy: none
+		sourceColumn: Driver Name
+
+	column 'Given Name'
+		dataType: string
+		lineageTag: dc7b5638-906c-4830-b4ed-ab890b62f629
+		summarizeBy: none
+		sourceColumn: Given Name
+
+	column 'Family Name'
+		dataType: string
+		lineageTag: fe0f01e0-8461-434c-b6bf-404c4f433c8a
+		summarizeBy: none
+		sourceColumn: Family Name
+
+	column 'Permanent Number'
+		dataType: string
+		lineageTag: 11c8edc8-d9ef-48ed-af47-7c6147f7eb0d
+		summarizeBy: none
+		sourceColumn: Permanent Number
+
+	column Nationality
+		dataType: string
+		lineageTag: 56435fb8-d2ff-4a46-9739-283e9dafc859
+		summarizeBy: none
+		sourceColumn: Nationality
+
+	column 'Date Of Birth'
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 1d9c9589-b88a-4050-a26f-0dacc82e4251
+		summarizeBy: none
+		sourceColumn: Date Of Birth
+
+	partition Driver = m
+		mode: import
+		source =
+				let
+					Source = LoadCsv("Driver.csv"),
+					Typed = Table.TransformColumnTypes(
+						Source,
+						{
+							{"Driver Key", type text},
+							{"Driver Code", type text},
+							{"Given Name", type text},
+							{"Family Name", type text},
+							{"Driver Name", type text},
+							{"Permanent Number", type text},
+							{"Nationality", type text},
+							{"Date Of Birth", type date}
+						},
+						"en-US"
+					)
+				in
+					Typed
+
