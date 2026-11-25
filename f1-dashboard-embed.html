@@ -1,0 +1,629 @@
+<title>Ultimate Formula 1 Dashboard</title>
+<style>
+:root{
+  /* Deliberately single-theme: a pit-wall timing screen reads dark, so every
+     colour is painted explicitly rather than inherited from the host. */
+  color-scheme:dark;
+  --bg:#0b0e13; --panel:#141922; --panel2:#1b2230; --line:#252d3b;
+  --tx:#e8ecf3; --tx2:#95a1b5; --tx3:#5f6b7f;
+  --acc:#e8002d; --good:#22c55e; --warn:#f59e0b;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--tx);
+  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.app{display:flex;min-height:100vh}
+
+/* ---------- sidebar ---------- */
+.sidebar{
+  width:250px;flex:0 0 250px;background:var(--panel);border-right:1px solid var(--line);
+  padding:22px 18px;display:flex;flex-direction:column;gap:26px;position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.brand{display:flex;align-items:center;gap:11px}
+.brand .mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--acc),#7a0018);
+  display:grid;place-items:center;font-weight:800;font-size:15px;letter-spacing:-.5px}
+.brand h1{font-size:14px;margin:0;font-weight:650;letter-spacing:.1px}
+.brand p{margin:1px 0 0;font-size:11px;color:var(--tx3)}
+nav{display:flex;flex-direction:column;gap:2px}
+nav button{
+  all:unset;cursor:pointer;padding:9px 11px;border-radius:8px;font-size:13px;color:var(--tx2);
+  display:flex;align-items:center;gap:10px;transition:background .12s,color .12s;
+}
+nav button:hover{background:var(--panel2);color:var(--tx)}
+nav button[aria-current="true"]{background:var(--panel2);color:var(--tx);box-shadow:inset 2px 0 0 var(--acc)}
+nav button .ico{width:16px;text-align:center;opacity:.85;font-size:13px}
+.filters{display:flex;flex-direction:column;gap:12px}
+.filters label{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx3);margin-bottom:5px}
+select{
+  width:100%;background:var(--panel2);color:var(--tx);border:1px solid var(--line);
+  border-radius:7px;padding:7px 9px;font:inherit;font-size:13px;cursor:pointer;
+}
+select:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.side-meta{margin-top:auto;font-size:11px;color:var(--tx3);line-height:1.6}
+.side-meta a{color:var(--tx2)}
+
+/* ---------- main ---------- */
+main{flex:1;min-width:0;padding:26px 30px 60px}
+.topbar{margin-bottom:22px}
+.topbar h2{margin:0;font-size:22px;font-weight:650;letter-spacing:-.2px}
+.topbar p{margin:5px 0 0;color:var(--tx2);font-size:13px}
+
+.section{margin-bottom:26px}
+.section > h3{
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);
+  margin:0 0 11px;font-weight:650;
+}
+.grid{display:grid;gap:12px}
+.muted{color:var(--tx2)}
+.tiny{font-size:11px}
+.empty{padding:34px;text-align:center;color:var(--tx3);border:1px dashed var(--line);border-radius:var(--r)}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:9px 12px;text-align:left;white-space:nowrap}
+thead th{
+  font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);font-weight:650;
+  background:var(--panel2);position:sticky;top:0;border-bottom:1px solid var(--line);
+}
+tbody tr{border-top:1px solid var(--line)}
+tbody tr:hover{background:#1a2129}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.pos{font-variant-numeric:tabular-nums;color:var(--tx2);width:34px}
+.pts{font-weight:650;font-variant-numeric:tabular-nums}
+
+/* team colour accents */
+.tbar{display:inline-block;width:3px;height:15px;border-radius:2px;vertical-align:-3px;margin-right:9px}
+.tname{color:var(--tx2);font-size:12px}
+.chip{
+  display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:650;
+  letter-spacing:.02em;
+}
+.delta{font-variant-numeric:tabular-nums;font-size:12px}
+.delta.up{color:var(--good)}
+.delta.zero{color:var(--tx3)}
+
+/* ---------- stat tiles ---------- */
+.tiles{grid-template-columns:repeat(auto-fill,minmax(178px,1fr))}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px}
+.tile .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:7px}
+.tile .v{font-size:17px;font-weight:650;letter-spacing:-.2px;line-height:1.25}
+.tile .s{font-size:11px;color:var(--tx2);margin-top:3px}
+
+/* ---------- schedule ---------- */
+.sched{grid-template-columns:repeat(auto-fill,minmax(252px,1fr))}
+.race{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;
+  position:relative;display:flex;flex-direction:column;gap:7px;
+}
+.race.next{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.race.past{opacity:.72}
+.race .rd{
+  position:absolute;top:12px;right:13px;font-size:11px;color:var(--tx3);
+  font-variant-numeric:tabular-nums;
+}
+/* Country badge rather than a flag emoji: Windows Chromium renders
+   regional-indicator pairs as bare letters, which reads as a rendering bug. */
+.cc{
+  display:inline-block;padding:2px 6px;border-radius:5px;background:var(--panel2);
+  border:1px solid var(--line);font-size:11px;font-weight:700;letter-spacing:.07em;
+  color:var(--tx2);font-variant-numeric:tabular-nums;
+}
+.race .cc{align-self:flex-start;font-size:12px;padding:3px 8px}
+td .cc{margin-right:7px}
+.pg .cc{padding:1px 4px;font-size:10px;letter-spacing:.04em}
+.race h4{margin:0;font-size:14px;font-weight:650;padding-right:26px}
+.race .circ{font-size:12px;color:var(--tx2)}
+.race .dates{font-size:12px;color:var(--tx3);font-variant-numeric:tabular-nums}
+.badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
+.b{font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;padding:2px 6px;border-radius:4px}
+.b.done{background:#1d2b22;color:#4ade80}
+.b.next{background:var(--acc);color:#fff}
+.b.up{background:var(--panel2);color:var(--tx3)}
+.b.spr{background:#2b2410;color:var(--warn)}
+
+/* ---------- cards (drivers / teams) ---------- */
+.cards{grid-template-columns:repeat(auto-fill,minmax(224px,1fr))}
+.dcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.dcard .top{display:flex;align-items:center;gap:12px;padding:14px 15px}
+.mono{
+  width:46px;height:46px;flex:0 0 46px;border-radius:11px;display:grid;place-items:center;
+  font-weight:800;font-size:15px;letter-spacing:-.5px;
+}
+.dcard .who{min-width:0}
+.dcard .who .n{font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dcard .who .t{font-size:11px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dcard .no{margin-left:auto;font-size:19px;font-weight:800;color:var(--tx3);font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:1fr 1fr}
+.stats div{padding:9px 15px;border-top:1px solid var(--line)}
+.stats div:nth-child(odd){border-right:1px solid var(--line)}
+.stats .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3)}
+.stats .v{font-size:14px;font-weight:650;font-variant-numeric:tabular-nums;margin-top:2px}
+.lineup{display:flex;justify-content:space-between;gap:10px;padding:7px 15px;
+  border-top:1px solid var(--line);font-size:13px}
+.livery{height:8px;display:flex}
+.livery i{flex:1}
+
+/* ---------- points grid ---------- */
+.pg{overflow:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);max-height:70vh}
+.pg table{font-size:12px}
+.pg th,.pg td{padding:6px 9px;text-align:center}
+.pg thead th{z-index:3}
+.pg th.dh,.pg td.dh{
+  position:sticky;left:0;background:var(--panel);text-align:left;z-index:2;
+  border-right:1px solid var(--line);min-width:168px;
+}
+.pg thead th.dh{z-index:4;background:var(--panel2)}
+.pg tbody tr:hover td{background:#1a2129}
+.pg td.z{color:var(--tx3)}
+.pg td.dnf{color:#f87171;font-size:10px;font-weight:700;letter-spacing:.04em}
+.pg td.win{font-weight:800;color:#fff}
+.pg td.tot{font-weight:700;background:var(--panel2)}
+.pg th.tot{background:var(--panel2)}
+
+@media (max-width:900px){
+  .app{flex-direction:column}
+  .sidebar{width:auto;flex:none;height:auto;position:static}
+  nav{flex-direction:row;flex-wrap:wrap}
+  .filters{flex-direction:row}
+  main{padding:20px 16px 50px}
+  .side-meta{margin-top:6px}
+}
+</style>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">F1</div>
+      <div>
+        <h1>Ultimate F1 Dashboard</h1>
+        <p id="brandSub">&nbsp;</p>
+      </div>
+    </div>
+
+    <nav id="nav"></nav>
+
+    <div class="filters">
+      <div>
+        <label for="seasonSel">Season</label>
+        <select id="seasonSel"></select>
+      </div>
+      <div>
+        <label for="roundSel">As of round</label>
+        <select id="roundSel"></select>
+      </div>
+    </div>
+
+    <div class="side-meta">
+      <div id="builtAt"></div>
+      <div>Data: <a href="https://jolpi.ca" target="_blank" rel="noopener">Jolpica API</a></div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <h2 id="viewTitle"></h2>
+      <p id="viewSub"></p>
+    </div>
+    <section id="view"></section>
+  </main>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * Data is baked in at build time by build.py. Row layouts:
+ *   res / spr : [driverId, teamId, pos|null, posText, grid, points, status, millis|null]
+ *   qual      : [driverId, pos]
+ * ------------------------------------------------------------------ */
+const DB = {"seasons":{"2025":{"season":"2025","teams":{"alpine":{"n":"Alpine F1 Team","c":"#0093CC","nat":"French"},"aston_martin":{"n":"Aston Martin","c":"#229971","nat":"British"},"ferrari":{"n":"Ferrari","c":"#E8002D","nat":"Italian"},"haas":{"n":"Haas F1 Team","c":"#B6BABD","nat":"American"},"mclaren":{"n":"McLaren","c":"#FF8000","nat":"British"},"mercedes":{"n":"Mercedes","c":"#00D7B6","nat":"German"},"rb":{"n":"RB F1 Team","c":"#6692FF","nat":"Italian"},"red_bull":{"n":"Red Bull","c":"#3671C6","nat":"Austrian"},"sauber":{"n":"Sauber","c":"#52E252","nat":"Swiss"},"williams":{"n":"Williams","c":"#64C4FF","nat":"British"}},"drivers":{"albon":{"c":"ALB","g":"Alexander","f":"Albon","n":"23","nat":"Thai","t":"williams"},"alonso":{"c":"ALO","g":"Fernando","f":"Alonso","n":"14","nat":"Spanish","t":"aston_martin"},"antonelli":{"c":"ANT","g":"Andrea Kimi","f":"Antonelli","n":"12","nat":"Italian","t":"mercedes"},"bearman":{"c":"BEA","g":"Oliver","f":"Bearman","n":"87","nat":"British","t":"haas"},"bortoleto":{"c":"BOR","g":"Gabriel","f":"Bortoleto","n":"5","nat":"Brazilian","t":"sauber"},"colapinto":{"c":"COL","g":"Franco","f":"Colapinto","n":"43","nat":"Argentine","t":"alpine"},"doohan":{"c":"DOO","g":"Jack","f":"Doohan","n":"7","nat":"Australian","t":"alpine"},"gasly":{"c":"GAS","g":"Pierre","f":"Gasly","n":"10","nat":"French","t":"alpine"},"hadjar":{"c":"HAD","g":"Isack","f":"Hadjar","n":"6","nat":"French","t":"rb"},"hamilton":{"c":"HAM","g":"Lewis","f":"Hamilton","n":"44","nat":"British","t":"ferrari"},"hulkenberg":{"c":"HUL","g":"Nico","f":"Hülkenberg","n":"27","nat":"German","t":"sauber"},"lawson":{"c":"LAW","g":"Liam","f":"Lawson","n":"30","nat":"New Zealander","t":"rb"},"leclerc":{"c":"LEC","g":"Charles","f":"Leclerc","n":"16","nat":"Monegasque","t":"ferrari"},"norris":{"c":"NOR","g":"Lando","f":"Norris","n":"1","nat":"British","t":"mclaren"},"ocon":{"c":"OCO","g":"Esteban","f":"Ocon","n":"31","nat":"French","t":"haas"},"piastri":{"c":"PIA","g":"Oscar","f":"Piastri","n":"81","nat":"Australian","t":"mclaren"},"russell":{"c":"RUS","g":"George","f":"Russell","n":"63","nat":"British","t":"mercedes"},"sainz":{"c":"SAI","g":"Carlos","f":"Sainz","n":"55","nat":"Spanish","t":"williams"},"stroll":{"c":"STR","g":"Lance","f":"Stroll","n":"18","nat":"Canadian","t":"aston_martin"},"tsunoda":{"c":"TSU","g":"Yuki","f":"Tsunoda","n":"22","nat":"Japanese","t":"red_bull"},"max_verstappen":{"c":"VER","g":"Max","f":"Verstappen","n":"3","nat":"Dutch","t":"red_bull"}},"races":[{"r":1,"name":"Australian Grand Prix","cc":"Australia","iso":"AU","circuit":"Albert Park Grand Prix Circuit","loc":"Melbourne","date":"2025-03-16","start":"2025-03-14","sprint":false,"done":true,"res":[["norris","mclaren",1,"1",1,25,"Finished",6126304],["max_verstappen","red_bull",2,"2",3,18,"Finished",6127199],["russell","mercedes",3,"3",4,15,"Finished",6134785],["antonelli","mercedes",4,"4",16,12,"Finished",6136439],["albon","williams",5,"5",6,10,"Finished",6139077],["stroll","aston_martin",6,"6",13,8,"Finished",6143717],["hulkenberg","sauber",7,"7",17,6,"Finished",6144727],["leclerc","ferrari",8,"8",7,4,"Finished",6146130],["piastri","mclaren",9,"9",2,2,"Finished",6146752],["hamilton","ferrari",10,"10",8,1,"Finished",6148777],["gasly","alpine",11,"11",9,0,"Finished",6152806],["tsunoda","rb",12,"12",5,0,"Finished",6156188],["ocon","haas",13,"13",19,0,"Finished",6159465],["bearman","haas",14,"14",20,0,"Finished",6166655],["lawson","red_bull",null,"R",18,0,"Retired",null],["bortoleto","sauber",null,"R",15,0,"Retired",null],["alonso","aston_martin",null,"R",12,0,"Retired",null],["sainz","williams",null,"R",10,0,"Retired",null],["doohan","alpine",null,"R",14,0,"Retired",null],["hadjar","rb",null,"R",11,0,"Retired",null]],"qual":[["norris",1],["piastri",2],["max_verstappen",3],["russell",4],["tsunoda",5],["albon",6],["leclerc",7],["hamilton",8],["gasly",9],["sainz",10],["hadjar",11],["alonso",12],["stroll",13],["doohan",14],["bortoleto",15],["antonelli",16],["hulkenberg",17],["lawson",18],["ocon",19],["bearman",20]],"spr":[]},{"r":2,"name":"Chinese Grand Prix","cc":"China","iso":"CN","circuit":"Shanghai International Circuit","loc":"Shanghai","date":"2025-03-23","start":"2025-03-21","sprint":true,"done":true,"res":[["piastri","mclaren",1,"1",1,25,"Finished",5455026],["norris","mclaren",2,"2",3,18,"Finished",5464774],["russell","mercedes",3,"3",2,15,"Finished",5466123],["max_verstappen","red_bull",4,"4",4,12,"Finished",5471682],["ocon","haas",5,"5",11,10,"Finished",5504995],["antonelli","mercedes",6,"6",8,8,"Finished",5508774],["albon","williams",7,"7",10,6,"Finished",5511347],["bearman","haas",8,"8",17,4,"Finished",5516329],["stroll","aston_martin",9,"9",14,2,"Finished",5525230],["sainz","williams",10,"10",15,1,"Finished",5531413],["hadjar","rb",11,"11",7,0,"Finished",5533901],["lawson","red_bull",12,"12",20,0,"Finished",5536173],["doohan","alpine",13,"13",18,0,"Finished",5543427],["bortoleto","sauber",14,"14",19,0,"Lapped",5465782],["hulkenberg","sauber",15,"15",12,0,"Lapped",5475252],["tsunoda","rb",16,"16",9,0,"Lapped",5478537],["alonso","aston_martin",null,"R",13,0,"Retired",null],["leclerc","ferrari",null,"D",6,0,"Disqualified",null],["hamilton","ferrari",null,"D",5,0,"Disqualified",null],["gasly","alpine",null,"D",16,0,"Disqualified",null]],"qual":[["piastri",1],["russell",2],["norris",3],["max_verstappen",4],["hamilton",5],["leclerc",6],["hadjar",7],["antonelli",8],["tsunoda",9],["albon",10],["ocon",11],["hulkenberg",12],["alonso",13],["stroll",14],["sainz",15],["gasly",16],["bearman",17],["doohan",18],["bortoleto",19],["lawson",20]],"spr":[["hamilton","ferrari",1,"1",1,8,"Finished",1839965],["piastri","mclaren",2,"2",3,7,"Finished",1846854],["max_verstappen","red_bull",3,"3",2,6,"Finished",1849769],["russell","mercedes",4,"4",5,5,"Finished",1851557],["leclerc","ferrari",5,"5",4,4,"Finished",1852155],["tsunoda","rb",6,"6",8,3,"Finished",1862253],["antonelli","mercedes",7,"7",7,2,"Finished",1863003],["norris","mclaren",8,"8",6,1,"Finished",1863436],["stroll","aston_martin",9,"9",10,0,"Finished",1864881],["alonso","aston_martin",10,"10",11,0,"Finished",1878183],["albon","williams",11,"11",9,0,"Finished",1879257],["gasly","alpine",12,"12",17,0,"Finished",1879614],["hadjar","rb",13,"13",15,0,"Finished",1882365],["lawson","red_bull",14,"14",19,0,"Finished",1884869],["bearman","haas",15,"15",12,0,"Finished",1885614],["ocon","haas",16,"16",18,0,"Finished",1886147],["sainz","williams",17,"17",13,0,"Finished",1891341],["bortoleto","sauber",18,"18",14,0,"Finished",1893905],["hulkenberg","sauber",19,"19",20,0,"Finished",1896647],["doohan","alpine",20,"20",16,0,"Finished",1910177]]},{"r":3,"name":"Japanese Grand Prix","cc":"Japan","iso":"JP","circuit":"Suzuka Circuit","loc":"Suzuka","date":"2025-04-06","start":"2025-04-04","sprint":false,"done":true,"res":[["max_verstappen","red_bull",1,"1",1,25,"Finished",4926983],["norris","mclaren",2,"2",2,18,"Finished",4928406],["piastri","mclaren",3,"3",3,15,"Finished",4929112],["leclerc","ferrari",4,"4",4,12,"Finished",4943080],["russell","mercedes",5,"5",5,10,"Finished",4944345],["antonelli","mercedes",6,"6",6,8,"Finished",4945654],["hamilton","ferrari",7,"7",8,6,"Finished",4956165],["hadjar","rb",8,"8",7,4,"Finished",4964117],["albon","williams",9,"9",9,2,"Finished",4967350],["bearman","haas",10,"10",10,1,"Finished",4981512],["alonso","aston_martin",11,"11",12,0,"Finished",4984316],["tsunoda","red_bull",12,"12",14,0,"Finished",4985384],["gasly","alpine",13,"13",11,0,"Finished",4989105],["sainz","williams",14,"14",15,0,"Finished",5001112],["doohan","alpine",15,"15",19,0,"Finished",5008297],["hulkenberg","sauber",16,"16",16,0,"Finished",5008940],["lawson","rb",17,"17",13,0,"Finished",5009717],["ocon","haas",18,"18",18,0,"Finished",5010421],["bortoleto","sauber",19,"19",17,0,"Finished",5010880],["stroll","aston_martin",20,"20",20,0,"Lapped",4939912]],"qual":[["max_verstappen",1],["norris",2],["piastri",3],["leclerc",4],["russell",5],["antonelli",6],["hadjar",7],["hamilton",8],["albon",9],["bearman",10],["gasly",11],["sainz",12],["alonso",13],["lawson",14],["tsunoda",15],["hulkenberg",16],["bortoleto",17],["ocon",18],["doohan",19],["stroll",20]],"spr":[]},{"r":4,"name":"Bahrain Grand Prix","cc":"Bahrain","iso":"BH","circuit":"Bahrain International Circuit","loc":"Sakhir","date":"2025-04-13","start":"2025-04-11","sprint":false,"done":true,"res":[["piastri","mclaren",1,"1",1,25,"Finished",5739435],["russell","mercedes",2,"2",3,18,"Finished",5754934],["norris","mclaren",3,"3",6,15,"Finished",5755708],["leclerc","ferrari",4,"4",2,12,"Finished",5759114],["hamilton","ferrari",5,"5",9,10,"Finished",5767428],["max_verstappen","red_bull",6,"6",7,8,"Finished",5773830],["gasly","alpine",7,"7",4,6,"Finished",5775437],["ocon","haas",8,"8",14,4,"Finished",5783679],["tsunoda","red_bull",9,"9",10,2,"Finished",5784496],["bearman","haas",10,"10",20,1,"Finished",5787029],["antonelli","mercedes",11,"11",5,0,"Finished",5787451],["albon","williams",12,"12",15,0,"Finished",5788274],["hadjar","rb",13,"13",12,0,"Finished",5795749],["doohan","alpine",14,"14",11,0,"Finished",5797241],["alonso","aston_martin",15,"15",13,0,"Finished",5799775],["lawson","rb",16,"16",17,0,"Finished",5803870],["stroll","aston_martin",17,"17",19,0,"Finished",5804924],["bortoleto","sauber",18,"18",18,0,"Finished",5806307],["sainz","williams",null,"R",8,0,"Retired",null],["hulkenberg","sauber",null,"D",16,0,"Disqualified",null]],"qual":[["piastri",1],["russell",2],["leclerc",3],["antonelli",4],["gasly",5],["norris",6],["max_verstappen",7],["sainz",8],["hamilton",9],["tsunoda",10],["doohan",11],["hadjar",12],["alonso",13],["ocon",14],["albon",15],["hulkenberg",16],["lawson",17],["bortoleto",18],["stroll",19],["bearman",20]],"spr":[]},{"r":5,"name":"Saudi Arabian Grand Prix","cc":"Saudi Arabia","iso":"SA","circuit":"Jeddah Corniche Circuit","loc":"Jeddah","date":"2025-04-20","start":"2025-04-18","sprint":false,"done":true,"res":[["piastri","mclaren",1,"1",2,25,"Finished",4866758],["max_verstappen","red_bull",2,"2",1,18,"Finished",4869601],["leclerc","ferrari",3,"3",4,15,"Finished",4874862],["norris","mclaren",4,"4",10,12,"Finished",4875954],["russell","mercedes",5,"5",3,10,"Finished",4893994],["antonelli","mercedes",6,"6",5,8,"Finished",4901446],["hamilton","ferrari",7,"7",7,6,"Finished",4905831],["sainz","williams",8,"8",6,4,"Finished",4931388],["albon","williams",9,"9",11,2,"Finished",4933273],["hadjar","rb",10,"10",14,1,"Finished",4933849],["alonso","aston_martin",11,"11",13,0,"Finished",4942675],["lawson","rb",12,"12",12,0,"Finished",4945209],["bearman","haas",13,"13",15,0,"Finished",4945952],["ocon","haas",14,"14",19,0,"Finished",4966481],["hulkenberg","sauber",15,"15",18,0,"Lapped",4871367],["stroll","aston_martin",16,"16",16,0,"Lapped",4872285],["doohan","alpine",17,"17",17,0,"Lapped",4886022],["bortoleto","sauber",18,"18",20,0,"Lapped",4886064],["tsunoda","red_bull",null,"R",8,0,"Retired",null],["gasly","alpine",null,"R",9,0,"Retired",null]],"qual":[["max_verstappen",1],["piastri",2],["russell",3],["leclerc",4],["antonelli",5],["sainz",6],["hamilton",7],["tsunoda",8],["gasly",9],["norris",10],["albon",11],["lawson",12],["alonso",13],["hadjar",14],["bearman",15],["stroll",16],["doohan",17],["hulkenberg",18],["ocon",19],["bortoleto",20]],"spr":[]},{"r":6,"name":"Miami Grand Prix","cc":"USA","iso":"US","circuit":"Miami International Autodrome","loc":"Miami","date":"2025-05-04","start":"2025-05-02","sprint":true,"done":true,"res":[["piastri","mclaren",1,"1",4,25,"Finished",5331587],["norris","mclaren",2,"2",2,18,"Finished",5336217],["russell","mercedes",3,"3",5,15,"Finished",5369231],["max_verstappen","red_bull",4,"4",1,12,"Finished",5371543],["albon","williams",5,"5",7,10,"Finished",5379654],["antonelli","mercedes",6,"6",3,8,"Finished",5387089],["leclerc","ferrari",7,"7",8,6,"Finished",5388623],["hamilton","ferrari",8,"8",12,4,"Finished",5391773],["sainz","williams",9,"9",6,2,"Finished",5392164],["tsunoda","red_bull",10,"10",10,1,"Finished",5406021],["hadjar","rb",11,"11",11,0,"Finished",5406189],["ocon","haas",12,"12",9,0,"Finished",5413593],["gasly","alpine",13,"13",20,0,"Finished",5422032],["hulkenberg","sauber",14,"14",16,0,"Lapped",5332742],["alonso","aston_martin",15,"15",17,0,"Lapped",5352566],["stroll","aston_martin",16,"16",18,0,"Lapped",5356749],["lawson","rb",null,"R",15,0,"Retired",null],["bortoleto","sauber",null,"R",13,0,"Retired",null],["bearman","haas",null,"R",19,0,"Retired",null],["doohan","alpine",null,"R",14,0,"Retired",null]],"qual":[["max_verstappen",1],["norris",2],["antonelli",3],["piastri",4],["russell",5],["sainz",6],["albon",7],["leclerc",8],["ocon",9],["tsunoda",10],["hadjar",11],["hamilton",12],["bortoleto",13],["doohan",14],["lawson",15],["hulkenberg",16],["alonso",17],["gasly",18],["stroll",19],["bearman",20]],"spr":[["norris","mclaren",1,"1",3,8,"Finished",2197647],["piastri","mclaren",2,"2",2,7,"Finished",2198319],["hamilton","ferrari",3,"3",7,6,"Finished",2198720],["russell","mercedes",4,"4",5,5,"Finished",2200774],["stroll","aston_martin",5,"5",16,4,"Finished",2201059],["tsunoda","red_bull",6,"6",20,3,"Finished",2202800],["antonelli","mercedes",7,"7",1,2,"Finished",2203282],["gasly","alpine",8,"8",13,1,"Finished",2203620],["hulkenberg","sauber",9,"9",11,0,"Finished",2203800],["hadjar","rb",10,"10",9,0,"Finished",2205149],["albon","williams",11,"11",8,0,"Finished",2205169],["ocon","haas",12,"12",12,0,"Finished",2206645],["lawson","rb",13,"13",14,0,"Finished",2206671],["bearman","haas",14,"14",19,0,"Finished",2206865],["bortoleto","sauber",15,"15",18,0,"Finished",2207322],["doohan","alpine",16,"16",17,0,"Finished",2207556],["max_verstappen","red_bull",17,"17",4,0,"Finished",2209706],["alonso","aston_martin",null,"R",10,0,"Retired",null],["sainz","williams",null,"R",15,0,"Retired",null],["leclerc","ferrari",null,"R",6,0,"Retired",null]]},{"r":7,"name":"Emilia Romagna Grand Prix","cc":"Italy","iso":"IT","circuit":"Autodromo Enzo e Dino Ferrari","loc":"Imola","date":"2025-05-18","start":"2025-05-16","sprint":false,"done":true,"res":[["max_verstappen","red_bull",1,"1",2,25,"Finished",5493199],["norris","mclaren",2,"2",4,18,"Finished",5499308],["piastri","mclaren",3,"3",1,15,"Finished",5506155],["hamilton","ferrari",4,"4",12,12,"Finished",5507555],["albon","williams",5,"5",7,10,"Finished",5511144],["leclerc","ferrari",6,"6",11,8,"Finished",5513973],["russell","mercedes",7,"7",3,6,"Finished",5515233],["sainz","williams",8,"8",6,4,"Finished",5516097],["hadjar","rb",9,"9",9,2,"Finished",5516785],["tsunoda","red_bull",10,"10",20,1,"Finished",5519645],["alonso","aston_martin",11,"11",5,0,"Finished",5520449],["hulkenberg","sauber",12,"12",17,0,"Finished",5523495],["gasly","alpine",13,"13",10,0,"Finished",5524623],["lawson","rb",14,"14",15,0,"Finished",5525710],["stroll","aston_martin",15,"15",8,0,"Finished",5526192],["colapinto","alpine",16,"16",16,0,"Finished",5526610],["bearman","haas",17,"17",19,0,"Finished",5527007],["bortoleto","sauber",18,"18",14,0,"Finished",5531771],["antonelli","mercedes",null,"R",13,0,"Retired",null],["ocon","haas",null,"R",18,0,"Retired",null]],"qual":[["piastri",1],["max_verstappen",2],["russell",3],["norris",4],["alonso",5],["sainz",6],["albon",7],["stroll",8],["hadjar",9],["gasly",10],["leclerc",11],["hamilton",12],["antonelli",13],["bortoleto",14],["colapinto",15],["bearman",16],["lawson",16],["hulkenberg",17],["ocon",18],["tsunoda",20]],"spr":[]},{"r":8,"name":"Monaco Grand Prix","cc":"Monaco","iso":"MC","circuit":"Circuit de Monaco","loc":"Monte Carlo","date":"2025-05-25","start":"2025-05-23","sprint":false,"done":true,"res":[["norris","mclaren",1,"1",1,25,"Finished",6033843],["leclerc","ferrari",2,"2",2,18,"Finished",6036974],["piastri","mclaren",3,"3",3,15,"Finished",6037501],["max_verstappen","red_bull",4,"4",4,12,"Finished",6054415],["hamilton","ferrari",5,"5",7,10,"Finished",6085230],["hadjar","rb",6,"6",5,8,"Lapped",6098925],["ocon","haas",7,"7",8,6,"Lapped",6099872],["lawson","rb",8,"8",9,4,"Lapped",6100589],["albon","williams",9,"9",10,2,"Lapped",6045712],["sainz","williams",10,"10",11,1,"Lapped",6049075],["russell","mercedes",11,"11",14,0,"Lapped",6067687],["bearman","haas",12,"12",20,0,"Lapped",6088536],["colapinto","alpine",13,"13",18,0,"Lapped",6090957],["bortoleto","sauber",14,"14",16,0,"Lapped",6102267],["stroll","aston_martin",15,"15",19,0,"Lapped",6104238],["hulkenberg","sauber",16,"16",13,0,"Lapped",6105387],["tsunoda","red_bull",17,"17",12,0,"Lapped",6105692],["antonelli","mercedes",18,"18",15,0,"Lapped",6042252],["alonso","aston_martin",null,"R",6,0,"Retired",null],["gasly","alpine",null,"R",17,0,"Retired",null]],"qual":[["norris",1],["leclerc",2],["piastri",3],["hamilton",4],["max_verstappen",5],["hadjar",6],["alonso",7],["ocon",8],["lawson",9],["albon",10],["sainz",11],["tsunoda",12],["hulkenberg",13],["russell",14],["antonelli",15],["bortoleto",16],["bearman",17],["gasly",18],["stroll",19],["colapinto",20]],"spr":[]},{"r":9,"name":"Spanish Grand Prix","cc":"Spain","iso":"ES","circuit":"Circuit de Barcelona-Catalunya","loc":"Barcelona","date":"2025-06-01","start":"2025-05-30","sprint":false,"done":true,"res":[["piastri","mclaren",1,"1",1,25,"Finished",5577375],["norris","mclaren",2,"2",2,18,"Finished",5579846],["leclerc","ferrari",3,"3",7,15,"Finished",5587830],["russell","mercedes",4,"4",4,12,"Finished",5588734],["hulkenberg","sauber",5,"5",15,10,"Finished",5591023],["hamilton","ferrari",6,"6",5,8,"Finished",5592883],["hadjar","rb",7,"7",9,6,"Finished",5593397],["gasly","alpine",8,"8",8,4,"Finished",5595257],["alonso","aston_martin",9,"9",10,2,"Finished",5598939],["max_verstappen","red_bull",10,"10",3,1,"Finished",5599201],["lawson","rb",11,"11",13,0,"Finished",5602907],["bortoleto","sauber",12,"12",12,0,"Finished",5603371],["tsunoda","red_bull",13,"13",19,0,"Finished",5606197],["sainz","williams",14,"14",17,0,"Finished",5606684],["colapinto","alpine",15,"15",18,0,"Finished",5608756],["ocon","haas",16,"16",16,0,"Finished",5609572],["bearman","haas",17,"17",14,0,"Finished",5614440],["antonelli","mercedes",null,"R",6,0,"Retired",null],["albon","williams",null,"R",11,0,"Retired",null]],"qual":[["piastri",1],["norris",2],["max_verstappen",3],["russell",4],["hamilton",5],["antonelli",6],["leclerc",7],["gasly",8],["hadjar",9],["alonso",10],["albon",11],["bortoleto",12],["lawson",13],["stroll",14],["bearman",15],["hulkenberg",16],["ocon",17],["sainz",18],["colapinto",19],["tsunoda",20]],"spr":[]},{"r":10,"name":"Canadian Grand Prix","cc":"Canada","iso":"CA","circuit":"Circuit Gilles Villeneuve","loc":"Montreal","date":"2025-06-15","start":"2025-06-13","sprint":false,"done":true,"res":[["russell","mercedes",1,"1",1,25,"Finished",5512688],["max_verstappen","red_bull",2,"2",2,18,"Finished",5512916],["antonelli","mercedes",3,"3",4,15,"Finished",5513702],["piastri","mclaren",4,"4",3,12,"Finished",5514797],["leclerc","ferrari",5,"5",8,10,"Finished",5516130],["hamilton","ferrari",6,"6",5,8,"Finished",5523401],["alonso","aston_martin",7,"7",6,6,"Finished",5523660],["hulkenberg","sauber",8,"8",11,4,"Finished",5528052],["ocon","haas",9,"9",14,2,"Lapped",5514161],["sainz","williams",10,"10",16,1,"Lapped",5514574],["bearman","haas",11,"11",13,0,"Lapped",5516405],["tsunoda","red_bull",12,"12",18,0,"Lapped",5518144],["colapinto","alpine",13,"13",10,0,"Lapped",5519706],["bortoleto","sauber",14,"14",15,0,"Lapped",5520567],["gasly","alpine",15,"15",20,0,"Lapped",5520638],["hadjar","rb",16,"16",12,0,"Lapped",5521425],["stroll","aston_martin",17,"17",17,0,"Lapped",5521751],["norris","mclaren",18,"18",7,0,"Retired",5042470],["lawson","rb",null,"R",19,0,"Retired",null],["albon","williams",null,"R",9,0,"Retired",null]],"qual":[["russell",1],["max_verstappen",2],["piastri",3],["antonelli",4],["hamilton",5],["alonso",6],["norris",7],["leclerc",8],["hadjar",9],["albon",10],["tsunoda",11],["colapinto",12],["hulkenberg",13],["bearman",14],["ocon",15],["bortoleto",16],["sainz",17],["stroll",18],["lawson",19],["gasly",20]],"spr":[]},{"r":11,"name":"Austrian Grand Prix","cc":"Austria","iso":"AT","circuit":"Red Bull Ring","loc":"Spielberg","date":"2025-06-29","start":"2025-06-27","sprint":false,"done":true,"res":[["norris","mclaren",1,"1",1,25,"Finished",5027693],["piastri","mclaren",2,"2",3,18,"Finished",5030388],["leclerc","ferrari",3,"3",2,15,"Finished",5047513],["hamilton","ferrari",4,"4",4,12,"Finished",5056713],["russell","mercedes",5,"5",5,10,"Finished",5090089],["lawson","rb",6,"6",6,8,"Finished",5095447],["alonso","aston_martin",7,"7",11,6,"Lapped",5029130],["bortoleto","sauber",8,"8",8,4,"Lapped",5029645],["hulkenberg","sauber",9,"9",20,2,"Lapped",5035413],["ocon","haas",10,"10",17,1,"Lapped",5037679],["bearman","haas",11,"11",15,0,"Lapped",5052547],["hadjar","rb",12,"12",13,0,"Lapped",5055650],["gasly","alpine",13,"13",10,0,"Lapped",5060748],["stroll","aston_martin",14,"14",16,0,"Lapped",5062155],["colapinto","alpine",15,"15",14,0,"Lapped",5070385],["tsunoda","red_bull",16,"16",18,0,"Lapped",5030672],["albon","williams",null,"R",12,0,"Retired",null],["max_verstappen","red_bull",null,"R",7,0,"Retired",null],["antonelli","mercedes",null,"R",9,0,"Retired",null],["sainz","williams",null,"W",19,0,"Did not start",null]],"qual":[["norris",1],["leclerc",2],["piastri",3],["hamilton",4],["russell",5],["lawson",6],["max_verstappen",7],["bortoleto",8],["antonelli",9],["gasly",10],["alonso",11],["albon",12],["hadjar",13],["colapinto",14],["bearman",15],["stroll",16],["ocon",17],["tsunoda",18],["sainz",19],["hulkenberg",20]],"spr":[]},{"r":12,"name":"British Grand Prix","cc":"UK","iso":"GB","circuit":"Silverstone Circuit","loc":"Silverstone","date":"2025-07-06","start":"2025-07-04","sprint":false,"done":true,"res":[["norris","mclaren",1,"1",3,25,"Finished",5835735],["piastri","mclaren",2,"2",2,18,"Finished",5842547],["hulkenberg","sauber",3,"3",19,15,"Finished",5870477],["hamilton","ferrari",4,"4",5,12,"Finished",5875547],["max_verstappen","red_bull",5,"5",1,10,"Finished",5892516],["gasly","alpine",6,"6",8,8,"Finished",5895592],["stroll","aston_martin",7,"7",17,6,"Finished",5896338],["albon","williams",8,"8",13,4,"Finished",5899870],["alonso","aston_martin",9,"9",7,2,"Finished",5901593],["russell","mercedes",10,"10",4,1,"Finished",5906409],["bearman","haas",11,"11",18,0,"Finished",5907830],["sainz","williams",12,"12",9,0,"Finished",5912327],["ocon","haas",13,"13",14,0,"Finished",5913036],["leclerc","ferrari",14,"14",6,0,"Finished",5920212],["tsunoda","red_bull",15,"15",11,0,"Lapped",5867985],["antonelli","mercedes",null,"R",10,0,"Retired",null],["hadjar","rb",null,"R",12,0,"Retired",null],["bortoleto","sauber",null,"R",16,0,"Retired",null],["lawson","rb",null,"R",15,0,"Retired",null],["colapinto","alpine",null,"W",20,0,"Did not start",null]],"qual":[["max_verstappen",1],["piastri",2],["norris",3],["russell",4],["hamilton",5],["leclerc",6],["antonelli",7],["bearman",8],["alonso",9],["gasly",10],["sainz",11],["tsunoda",12],["hadjar",13],["albon",14],["ocon",15],["lawson",16],["bortoleto",17],["stroll",18],["hulkenberg",19],["colapinto",20]],"spr":[]},{"r":13,"name":"Belgian Grand Prix","cc":"Belgium","iso":"BE","circuit":"Circuit de Spa-Francorchamps","loc":"Spa","date":"2025-07-27","start":"2025-07-25","sprint":true,"done":true,"res":[["piastri","mclaren",1,"1",2,25,"Finished",5122601],["norris","mclaren",2,"2",1,18,"Finished",5126016],["leclerc","ferrari",3,"3",3,15,"Finished",5142786],["max_verstappen","red_bull",4,"4",4,12,"Finished",5144332],["russell","mercedes",5,"5",6,10,"Finished",5157464],["albon","williams",6,"6",5,8,"Finished",5162527],["hamilton","ferrari",7,"7",18,6,"Finished",5163280],["lawson","rb",8,"8",9,4,"Finished",5174634],["bortoleto","sauber",9,"9",10,2,"Finished",5179035],["gasly","alpine",10,"10",13,1,"Finished",5195315],["bearman","haas",11,"11",12,0,"Finished",5195746],["hulkenberg","sauber",12,"12",14,0,"Finished",5196229],["tsunoda","red_bull",13,"13",7,0,"Finished",5197996],["stroll","aston_martin",14,"14",16,0,"Finished",5202432],["ocon","haas",15,"15",11,0,"Finished",5208664],["antonelli","mercedes",16,"16",19,0,"Finished",5209322],["alonso","aston_martin",17,"17",20,0,"Finished",5210525],["sainz","williams",18,"18",17,0,"Finished",5214625],["colapinto","alpine",19,"19",15,0,"Finished",5217851],["hadjar","rb",20,"20",8,0,"Lapped",5135543]],"qual":[["norris",1],["piastri",2],["leclerc",3],["max_verstappen",4],["albon",5],["russell",6],["tsunoda",7],["hadjar",8],["lawson",9],["bortoleto",10],["ocon",11],["bearman",12],["gasly",13],["hulkenberg",14],["sainz",15],["hamilton",16],["colapinto",17],["antonelli",18],["alonso",19],["stroll",20]],"spr":[["max_verstappen","red_bull",1,"1",2,8,"Finished",1597997],["piastri","mclaren",2,"2",1,7,"Finished",1598750],["norris","mclaren",3,"3",3,6,"Finished",1599411],["leclerc","ferrari",4,"4",4,5,"Finished",1608173],["ocon","haas",5,"5",5,4,"Finished",1611786],["sainz","williams",6,"6",6,3,"Finished",1612961],["bearman","haas",7,"7",7,2,"Finished",1616607],["hadjar","rb",8,"8",9,1,"Finished",1617116],["bortoleto","sauber",9,"9",10,0,"Finished",1620180],["lawson","rb",10,"10",11,0,"Finished",1620894],["tsunoda","red_bull",11,"11",12,0,"Finished",1622548],["russell","mercedes",12,"12",13,0,"Finished",1623966],["stroll","aston_martin",13,"13",15,0,"Finished",1624592],["alonso","aston_martin",14,"14",14,0,"Finished",1627043],["hamilton","ferrari",15,"15",18,0,"Finished",1628172],["albon","williams",16,"16",16,0,"Finished",1628938],["antonelli","mercedes",17,"17",19,0,"Finished",1629978],["hulkenberg","sauber",18,"18",17,0,"Finished",1630864],["colapinto","alpine",19,"19",20,0,"Finished",1636069],["gasly","alpine",null,"R",8,0,"Retired",null]]},{"r":14,"name":"Hungarian Grand Prix","cc":"Hungary","iso":"HU","circuit":"Hungaroring","loc":"Budapest","date":"2025-08-03","start":"2025-08-01","sprint":false,"done":true,"res":[["norris","mclaren",1,"1",3,25,"Finished",5721231],["piastri","mclaren",2,"2",2,18,"Finished",5721929],["russell","mercedes",3,"3",4,15,"Finished",5743147],["leclerc","ferrari",4,"4",1,12,"Finished",5763791],["alonso","aston_martin",5,"5",5,10,"Finished",5780271],["bortoleto","sauber",6,"6",7,8,"Finished",5787400],["stroll","aston_martin",7,"7",6,6,"Finished",5789405],["lawson","rb",8,"8",9,4,"Finished",5790682],["max_verstappen","red_bull",9,"9",8,2,"Finished",5793876],["antonelli","mercedes",10,"10",15,1,"Lapped",5728880],["hadjar","rb",11,"11",10,0,"Lapped",5729731],["hamilton","ferrari",12,"12",12,0,"Lapped",5731092],["hulkenberg","sauber",13,"13",18,0,"Lapped",5752499],["sainz","williams",14,"14",13,0,"Lapped",5754557],["albon","williams",15,"15",19,0,"Lapped",5759342],["ocon","haas",16,"16",17,0,"Lapped",5766489],["tsunoda","red_bull",17,"17",20,0,"Lapped",5768174],["colapinto","alpine",18,"18",14,0,"Lapped",5768601],["gasly","alpine",19,"19",16,0,"Lapped",5777575],["bearman","haas",null,"R",11,0,"Retired",null]],"qual":[["leclerc",1],["piastri",2],["norris",3],["russell",4],["alonso",5],["stroll",6],["bortoleto",7],["max_verstappen",8],["lawson",9],["hadjar",10],["bearman",11],["hamilton",12],["sainz",13],["colapinto",14],["antonelli",15],["tsunoda",16],["gasly",17],["ocon",18],["hulkenberg",19],["albon",20]],"spr":[]},{"r":15,"name":"Dutch Grand Prix","cc":"Netherlands","iso":"NL","circuit":"Circuit Park Zandvoort","loc":"Zandvoort","date":"2025-08-31","start":"2025-08-29","sprint":false,"done":true,"res":[["piastri","mclaren",1,"1",1,25,"Finished",5909849],["max_verstappen","red_bull",2,"2",3,18,"Finished",5911120],["hadjar","rb",3,"3",4,15,"Finished",5913082],["russell","mercedes",4,"4",5,12,"Finished",5915503],["albon","williams",5,"5",15,10,"Finished",5916176],["bearman","haas",6,"6",20,8,"Finished",5918893],["stroll","aston_martin",7,"7",19,6,"Finished",5919346],["alonso","aston_martin",8,"8",10,4,"Finished",5921558],["tsunoda","red_bull",9,"9",12,2,"Finished",5923446],["ocon","haas",10,"10",18,1,"Finished",5923912],["colapinto","alpine",11,"11",16,0,"Finished",5924360],["lawson","rb",12,"12",8,0,"Finished",5926912],["sainz","williams",13,"13",9,0,"Finished",5927225],["hulkenberg","sauber",14,"14",17,0,"Finished",5929574],["bortoleto","sauber",15,"15",13,0,"Finished",5931414],["antonelli","mercedes",16,"16",11,0,"Finished",5931878],["gasly","alpine",17,"17",14,0,"Finished",5933478],["norris","mclaren",18,"18",2,0,"Retired",5168487],["leclerc","ferrari",null,"R",6,0,"Retired",null],["hamilton","ferrari",null,"R",7,0,"Retired",null]],"qual":[["piastri",1],["norris",2],["max_verstappen",3],["hadjar",4],["russell",5],["leclerc",6],["hamilton",7],["lawson",8],["sainz",9],["alonso",10],["antonelli",11],["tsunoda",12],["bortoleto",13],["gasly",14],["albon",15],["colapinto",16],["hulkenberg",17],["ocon",18],["bearman",19],["stroll",20]],"spr":[]},{"r":16,"name":"Italian Grand Prix","cc":"Italy","iso":"IT","circuit":"Autodromo Nazionale di Monza","loc":"Monza","date":"2025-09-07","start":"2025-09-05","sprint":false,"done":true,"res":[["max_verstappen","red_bull",1,"1",1,25,"Finished",4404325],["norris","mclaren",2,"2",2,18,"Finished",4423532],["piastri","mclaren",3,"3",3,15,"Finished",4425676],["leclerc","ferrari",4,"4",4,12,"Finished",4429949],["russell","mercedes",5,"5",5,10,"Finished",4437206],["hamilton","ferrari",6,"6",10,8,"Finished",4441774],["albon","williams",7,"7",14,6,"Finished",4454862],["bortoleto","sauber",8,"8",7,4,"Finished",4462809],["antonelli","mercedes",9,"9",6,2,"Finished",4464087],["hadjar","rb",10,"10",19,1,"Finished",4468216],["sainz","williams",11,"11",13,0,"Finished",4468794],["bearman","haas",12,"12",11,0,"Finished",4483613],["tsunoda","red_bull",13,"13",9,0,"Finished",4485026],["lawson","rb",14,"14",18,0,"Finished",4486676],["ocon","haas",15,"15",15,0,"Lapped",4406460],["gasly","alpine",16,"16",20,0,"Lapped",4410162],["colapinto","alpine",17,"17",17,0,"Lapped",4411773],["stroll","aston_martin",18,"18",16,0,"Lapped",4413626],["alonso","aston_martin",null,"R",8,0,"Retired",null],["hulkenberg","sauber",null,"W",12,0,"Did not start",null]],"qual":[["max_verstappen",1],["norris",2],["piastri",3],["leclerc",4],["hamilton",5],["russell",6],["antonelli",7],["bortoleto",8],["alonso",9],["tsunoda",10],["bearman",11],["hulkenberg",12],["sainz",13],["albon",14],["ocon",15],["hadjar",16],["stroll",17],["colapinto",18],["gasly",19],["lawson",20]],"spr":[]},{"r":17,"name":"Azerbaijan Grand Prix","cc":"Azerbaijan","iso":"AZ","circuit":"Baku City Circuit","loc":"Baku","date":"2025-09-21","start":"2025-09-19","sprint":false,"done":true,"res":[["max_verstappen","red_bull",1,"1",1,25,"Finished",5606408],["russell","mercedes",2,"2",5,18,"Finished",5621017],["sainz","williams",3,"3",2,15,"Finished",5625607],["antonelli","mercedes",4,"4",4,12,"Finished",5628168],["lawson","rb",5,"5",3,10,"Finished",5639698],["tsunoda","red_bull",6,"6",6,8,"Finished",5640216],["norris","mclaren",7,"7",7,6,"Finished",5640635],["hamilton","ferrari",8,"8",12,4,"Finished",5642718],["leclerc","ferrari",9,"9",10,2,"Finished",5643182],["hadjar","rb",10,"10",8,1,"Finished",5645390],["bortoleto","sauber",11,"11",13,0,"Finished",5674014],["bearman","haas",12,"12",15,0,"Finished",5674670],["albon","williams",13,"13",19,0,"Finished",5679278],["ocon","haas",14,"14",20,0,"Finished",5683988],["alonso","aston_martin",15,"15",11,0,"Finished",5685115],["hulkenberg","sauber",16,"16",17,0,"Finished",5686645],["stroll","aston_martin",17,"17",14,0,"Finished",5702800],["gasly","alpine",18,"18",18,0,"Lapped",5610273],["colapinto","alpine",19,"19",16,0,"Lapped",5612733],["piastri","mclaren",null,"R",9,0,"Retired",null]],"qual":[["max_verstappen",1],["sainz",2],["lawson",3],["antonelli",4],["russell",5],["tsunoda",6],["norris",7],["hadjar",8],["piastri",9],["leclerc",10],["alonso",11],["hamilton",12],["bortoleto",13],["stroll",14],["bearman",15],["colapinto",16],["hulkenberg",17],["gasly",18],["albon",19],["ocon",20]],"spr":[]},{"r":18,"name":"Singapore Grand Prix","cc":"Singapore","iso":"SG","circuit":"Marina Bay Street Circuit","loc":"Marina Bay","date":"2025-10-05","start":"2025-10-03","sprint":false,"done":true,"res":[["russell","mercedes",1,"1",1,25,"Finished",6022367],["max_verstappen","red_bull",2,"2",2,18,"Finished",6027797],["norris","mclaren",3,"3",5,15,"Finished",6028433],["piastri","mclaren",4,"4",3,12,"Finished",6030513],["antonelli","mercedes",5,"5",4,10,"Finished",6056048],["leclerc","ferrari",6,"6",7,8,"Finished",6068363],["alonso","aston_martin",7,"7",10,6,"Finished",6103034],["hamilton","ferrari",8,"8",6,4,"Finished",6107618],["bearman","haas",9,"9",9,2,"Finished",6115894],["sainz","williams",10,"10",18,1,"Lapped",6033121],["hadjar","rb",11,"11",8,0,"Lapped",6039702],["tsunoda","red_bull",12,"12",13,0,"Lapped",6041636],["stroll","aston_martin",13,"13",15,0,"Lapped",6046857],["albon","williams",14,"14",20,0,"Lapped",6047687],["lawson","rb",15,"15",12,0,"Lapped",6049512],["colapinto","alpine",16,"16",16,0,"Lapped",6065257],["bortoleto","sauber",17,"17",14,0,"Lapped",6069120],["ocon","haas",18,"18",17,0,"Lapped",6069500],["gasly","alpine",19,"19",19,0,"Lapped",6069828],["hulkenberg","sauber",20,"20",11,0,"Lapped",6071407]],"qual":[["russell",1],["max_verstappen",2],["piastri",3],["antonelli",4],["norris",5],["hamilton",6],["leclerc",7],["hadjar",8],["bearman",9],["alonso",10],["hulkenberg",11],["lawson",12],["tsunoda",13],["bortoleto",14],["stroll",15],["colapinto",16],["ocon",17],["gasly",18],["albon",19],["sainz",20]],"spr":[]},{"r":19,"name":"United States Grand Prix","cc":"USA","iso":"US","circuit":"Circuit of the Americas","loc":"Austin","date":"2025-10-19","start":"2025-10-17","sprint":true,"done":true,"res":[["max_verstappen","red_bull",1,"1",1,25,"Finished",5640161],["norris","mclaren",2,"2",2,18,"Finished",5648120],["leclerc","ferrari",3,"3",3,15,"Finished",5655534],["hamilton","ferrari",4,"4",5,12,"Finished",5668697],["piastri","mclaren",5,"5",6,10,"Finished",5669839],["russell","mercedes",6,"6",4,8,"Finished",5673617],["tsunoda","red_bull",7,"7",13,6,"Finished",5692875],["hulkenberg","sauber",8,"8",11,4,"Finished",5697410],["bearman","haas",9,"9",8,2,"Finished",5704883],["alonso","aston_martin",10,"10",10,1,"Finished",5710162],["lawson","rb",11,"11",12,0,"Finished",5713370],["stroll","aston_martin",12,"12",19,0,"Finished",5714939],["antonelli","mercedes",13,"13",7,0,"Finished",5715907],["albon","williams",14,"14",18,0,"Finished",5720161],["ocon","haas",15,"15",17,0,"Finished",5723204],["hadjar","rb",16,"16",20,0,"Finished",5732968],["colapinto","alpine",17,"17",15,0,"Lapped",5642468],["bortoleto","sauber",18,"18",16,0,"Lapped",5643718],["gasly","alpine",19,"19",14,0,"Lapped",5646316],["sainz","williams",null,"R",9,0,"Retired",null]],"qual":[["max_verstappen",1],["norris",2],["leclerc",3],["russell",4],["hamilton",5],["piastri",6],["antonelli",7],["bearman",8],["sainz",9],["alonso",10],["hulkenberg",11],["lawson",12],["tsunoda",13],["gasly",14],["colapinto",15],["bortoleto",16],["ocon",17],["stroll",18],["albon",19],["hadjar",20]],"spr":[["max_verstappen","red_bull",1,"1",1,8,"Finished",2278229],["russell","mercedes",2,"2",5,7,"Finished",2278624],["sainz","williams",3,"3",7,6,"Finished",2279020],["hamilton","ferrari",4,"4",8,5,"Finished",2279453],["leclerc","ferrari",5,"5",10,4,"Finished",2280054],["albon","williams",6,"6",9,3,"Finished",2280805],["tsunoda","red_bull",7,"7",18,2,"Finished",2281205],["antonelli","mercedes",8,"8",11,1,"Finished",2282376],["lawson","rb",9,"9",15,0,"Finished",2283033],["gasly","alpine",10,"10",13,0,"Finished",2283355],["bortoleto","sauber",11,"11",20,0,"Finished",2283878],["hadjar","rb",12,"12",12,0,"Finished",2284457],["hulkenberg","sauber",13,"13",4,0,"Finished",2284853],["colapinto","alpine",14,"14",17,0,"Finished",2286235],["bearman","haas",15,"15",16,0,"Finished",2291805],["ocon","haas",null,"R",19,0,"Retired",null],["stroll","aston_martin",null,"R",14,0,"Retired",null],["norris","mclaren",null,"R",2,0,"Retired",null],["piastri","mclaren",null,"R",3,0,"Retired",null],["alonso","aston_martin",null,"R",6,0,"Retired",null]]},{"r":20,"name":"Mexico City Grand Prix","cc":"Mexico","iso":"MX","circuit":"Autódromo Hermanos Rodríguez","loc":"Mexico City","date":"2025-10-26","start":"2025-10-24","sprint":false,"done":true,"res":[["norris","mclaren",1,"1",1,25,"Finished",5878574],["leclerc","ferrari",2,"2",2,18,"Finished",5908898],["max_verstappen","red_bull",3,"3",5,15,"Finished",5909623],["bearman","haas",4,"4",9,12,"Finished",5919529],["piastri","mclaren",5,"5",7,10,"Finished",5920639],["antonelli","mercedes",6,"6",6,8,"Finished",5926411],["russell","mercedes",7,"7",4,6,"Finished",5928861],["hamilton","ferrari",8,"8",3,4,"Finished",5935020],["ocon","haas",9,"9",11,2,"Finished",5954038],["bortoleto","sauber",10,"10",16,1,"Finished",5955437],["tsunoda","red_bull",11,"11",10,0,"Finished",5957622],["albon","williams",12,"12",17,0,"Lapped",5881024],["hadjar","rb",13,"13",8,0,"Lapped",5885230],["stroll","aston_martin",14,"14",19,0,"Lapped",5885609],["gasly","alpine",15,"15",18,0,"Lapped",5922654],["colapinto","alpine",16,"16",20,0,"Lapped",5922950],["sainz","williams",17,"17",12,0,"Retired",5614132],["alonso","aston_martin",null,"R",14,0,"Retired",null],["hulkenberg","sauber",null,"R",13,0,"Retired",null],["lawson","rb",null,"R",15,0,"Retired",null]],"qual":[["norris",1],["leclerc",2],["hamilton",3],["russell",4],["max_verstappen",5],["antonelli",6],["sainz",7],["piastri",8],["hadjar",9],["bearman",10],["tsunoda",11],["ocon",12],["hulkenberg",13],["alonso",14],["lawson",15],["bortoleto",16],["albon",17],["gasly",18],["stroll",19],["colapinto",20]],"spr":[]},{"r":21,"name":"São Paulo Grand Prix","cc":"Brazil","iso":"BR","circuit":"Autódromo José Carlos Pace","loc":"São Paulo","date":"2025-11-09","start":"2025-11-07","sprint":true,"done":true,"res":[["norris","mclaren",1,"1",1,25,"Finished",5521596],["antonelli","mercedes",2,"2",2,18,"Finished",5531984],["max_verstappen","red_bull",3,"3",19,15,"Finished",5532346],["russell","mercedes",4,"4",6,12,"Finished",5536863],["piastri","mclaren",5,"5",4,10,"Finished",5537345],["bearman","haas",6,"6",8,8,"Finished",5551226],["lawson","rb",7,"7",7,6,"Finished",5574238],["hadjar","rb",8,"8",5,4,"Finished",5574469],["hulkenberg","sauber",9,"9",10,2,"Finished",5574920],["gasly","alpine",10,"10",9,1,"Finished",5575510],["albon","williams",11,"11",12,0,"Finished",5575780],["ocon","haas",12,"12",20,0,"Finished",5576292],["sainz","williams",13,"13",15,0,"Finished",5577016],["alonso","aston_martin",14,"14",11,0,"Finished",5577362],["colapinto","alpine",15,"15",16,0,"Finished",5579373],["stroll","aston_martin",16,"16",14,0,"Finished",5579843],["tsunoda","red_bull",17,"17",17,0,"Finished",5590772],["hamilton","ferrari",null,"R",13,0,"Retired",null],["leclerc","ferrari",null,"R",3,0,"Retired",null],["bortoleto","sauber",null,"R",18,0,"Retired",null]],"qual":[["norris",1],["antonelli",2],["leclerc",3],["piastri",4],["hadjar",5],["russell",6],["lawson",7],["bearman",8],["gasly",9],["hulkenberg",10],["alonso",11],["albon",12],["hamilton",13],["stroll",14],["sainz",15],["max_verstappen",16],["ocon",17],["colapinto",18],["tsunoda",19]],"spr":[["norris","mclaren",1,"1",1,8,"Finished",3205928],["antonelli","mercedes",2,"2",2,7,"Finished",3206773],["russell","mercedes",3,"3",4,6,"Finished",3208246],["max_verstappen","red_bull",4,"4",6,5,"Finished",3210351],["leclerc","ferrari",5,"5",8,4,"Finished",3222411],["alonso","aston_martin",6,"6",5,3,"Finished",3224234],["hamilton","ferrari",7,"7",11,2,"Finished",3224531],["gasly","alpine",8,"8",13,1,"Finished",3225294],["stroll","aston_martin",9,"9",7,0,"Finished",3229861],["hadjar","rb",10,"10",9,0,"Finished",3235476],["ocon","haas",11,"11",18,0,"Finished",3236928],["bearman","haas",12,"12",15,0,"Finished",3242262],["tsunoda","red_bull",13,"13",19,0,"Finished",3244390],["sainz","williams",14,"14",20,0,"Finished",3244879],["hulkenberg","sauber",15,"15",10,0,"Finished",3248277],["lawson","rb",16,"16",17,0,"Finished",3249018],["albon","williams",17,"17",12,0,"Finished",3261384],["bortoleto","sauber",18,"18",14,0,"Retired",3157568],["piastri","mclaren",null,"R",3,0,"Retired",null],["colapinto","alpine",null,"R",16,0,"Retired",null]]},{"r":22,"name":"Las Vegas Grand Prix","cc":"USA","iso":"US","circuit":"Las Vegas Strip Street Circuit","loc":"Las Vegas","date":"2025-11-23","start":"2025-11-21","sprint":false,"done":true,"res":[["max_verstappen","red_bull",1,"1",2,25,"Finished",4868429],["russell","mercedes",2,"2",4,18,"Finished",4891975],["antonelli","mercedes",3,"3",17,15,"Finished",4898917],["leclerc","ferrari",4,"4",9,12,"Finished",4899107],["sainz","williams",5,"5",3,10,"Finished",4903353],["hadjar","rb",6,"6",8,8,"Finished",4913686],["hulkenberg","sauber",7,"7",11,6,"Finished",4919563],["hamilton","ferrari",8,"8",19,4,"Finished",4927798],["ocon","haas",9,"9",13,2,"Finished",4929064],["bearman","haas",10,"10",14,1,"Finished",4938978],["alonso","aston_martin",11,"11",7,0,"Finished",4953737],["tsunoda","red_bull",12,"12",20,0,"Finished",4955403],["gasly","alpine",13,"13",10,0,"Finished",4960131],["lawson","rb",14,"14",6,0,"Lapped",4871720],["colapinto","alpine",15,"15",15,0,"Lapped",4878888],["albon","williams",null,"R",16,0,"Retired",null],["bortoleto","sauber",null,"R",18,0,"Retired",null],["stroll","aston_martin",null,"R",12,0,"Retired",null],["norris","mclaren",null,"D",1,0,"Disqualified",null],["piastri","mclaren",null,"D",5,0,"Disqualified",null]],"qual":[["norris",1],["max_verstappen",2],["sainz",3],["russell",4],["piastri",5],["lawson",6],["alonso",7],["hadjar",8],["leclerc",9],["gasly",10],["hulkenberg",11],["stroll",12],["ocon",13],["bearman",14],["colapinto",15],["albon",16],["antonelli",17],["bortoleto",18],["tsunoda",19],["hamilton",20]],"spr":[]},{"r":23,"name":"Qatar Grand Prix","cc":"Qatar","iso":"QA","circuit":"Losail International Circuit","loc":"Lusail","date":"2025-11-30","start":"2025-11-28","sprint":true,"done":true,"res":[["max_verstappen","red_bull",1,"1",3,25,"Finished",5078241],["piastri","mclaren",2,"2",1,18,"Finished",5086236],["sainz","williams",3,"3",7,15,"Finished",5100906],["norris","mclaren",4,"4",2,12,"Finished",5101556],["antonelli","mercedes",5,"5",5,10,"Finished",5106558],["russell","mercedes",6,"6",4,8,"Finished",5126840],["alonso","aston_martin",7,"7",8,6,"Finished",5132286],["leclerc","ferrari",8,"8",10,4,"Finished",5135026],["lawson","rb",9,"9",12,2,"Finished",5138314],["tsunoda","red_bull",10,"10",15,1,"Finished",5140011],["albon","williams",11,"11",14,0,"Finished",5145172],["hamilton","ferrari",12,"12",17,0,"Finished",5155971],["bortoleto","sauber",13,"13",19,0,"Finished",5163053],["colapinto","alpine",14,"14",20,0,"Lapped",5081524],["ocon","haas",15,"15",16,0,"Lapped",5082494],["gasly","alpine",16,"16",9,0,"Lapped",5083182],["stroll","aston_martin",17,"17",18,0,"Retired",5015203],["hadjar","rb",18,"18",6,0,"Retired",5032324],["bearman","haas",null,"R",13,0,"Retired",null],["hulkenberg","sauber",null,"R",11,0,"Retired",null]],"qual":[["piastri",1],["norris",2],["max_verstappen",3],["russell",4],["antonelli",5],["hadjar",6],["sainz",7],["alonso",8],["gasly",9],["leclerc",10],["hulkenberg",11],["lawson",12],["bearman",13],["bortoleto",14],["albon",15],["tsunoda",16],["ocon",17],["hamilton",18],["stroll",19],["colapinto",20]],"spr":[["piastri","mclaren",1,"1",1,8,"Finished",1611033],["russell","mercedes",2,"2",2,7,"Finished",1615984],["norris","mclaren",3,"3",3,6,"Finished",1617312],["max_verstappen","red_bull",4,"4",6,5,"Finished",1620087],["tsunoda","red_bull",5,"5",5,4,"Finished",1630360],["antonelli","mercedes",6,"6",7,3,"Finished",1632424],["alonso","aston_martin",7,"7",4,2,"Finished",1635589],["sainz","williams",8,"8",8,1,"Finished",1638366],["hadjar","rb",9,"9",11,0,"Finished",1639239],["albon","williams",10,"10",10,0,"Finished",1639958],["bortoleto","sauber",11,"11",13,0,"Finished",1643999],["bearman","haas",12,"12",12,0,"Finished",1645562],["leclerc","ferrari",13,"13",9,0,"Finished",1646215],["lawson","rb",14,"14",16,0,"Finished",1647949],["ocon","haas",15,"15",15,0,"Finished",1649871],["hulkenberg","sauber",16,"16",14,0,"Finished",1650671],["hamilton","ferrari",17,"17",18,0,"Finished",1657204],["gasly","alpine",18,"18",19,0,"Finished",1680567],["stroll","aston_martin",19,"19",17,0,"Finished",1688993],["colapinto","alpine",20,"20",20,0,"Finished",1691837]]},{"r":24,"name":"Abu Dhabi Grand Prix","cc":"UAE","iso":"AE","circuit":"Yas Marina Circuit","loc":"Abu Dhabi","date":"2025-12-07","start":"2025-12-05","sprint":false,"done":true,"res":[["max_verstappen","red_bull",1,"1",1,25,"Finished",5167469],["piastri","mclaren",2,"2",3,18,"Finished",5180063],["norris","mclaren",3,"3",2,15,"Finished",5184041],["leclerc","ferrari",4,"4",5,12,"Finished",5190748],["russell","mercedes",5,"5",4,10,"Finished",5216032],["alonso","aston_martin",6,"6",6,8,"Finished",5235031],["ocon","haas",7,"7",8,6,"Finished",5237345],["hamilton","ferrari",8,"8",16,4,"Finished",5240139],["hulkenberg","sauber",9,"9",18,2,"Finished",5246483],["stroll","aston_martin",10,"10",15,1,"Finished",5246992],["bortoleto","sauber",11,"11",7,0,"Finished",5248512],["bearman","haas",12,"12",11,0,"Finished",5248635],["sainz","williams",13,"13",12,0,"Finished",5249627],["tsunoda","red_bull",14,"14",10,0,"Finished",5251263],["antonelli","mercedes",15,"15",14,0,"Finished",5251868],["albon","williams",16,"16",17,0,"Finished",5257796],["hadjar","rb",17,"17",9,0,"Lapped",5168796],["lawson","rb",18,"18",13,0,"Lapped",5172128],["gasly","alpine",19,"19",19,0,"Lapped",5179377],["colapinto","alpine",20,"20",20,0,"Lapped",5181472]],"qual":[["max_verstappen",1],["norris",2],["piastri",3],["russell",4],["leclerc",5],["alonso",6],["bortoleto",7],["ocon",8],["hadjar",9],["tsunoda",10],["bearman",11],["sainz",12],["lawson",13],["antonelli",14],["stroll",15],["hamilton",16],["albon",17],["hulkenberg",18],["gasly",19],["colapinto",20]],"spr":[]}],"last":24,"next":null},"2026":{"season":"2026","teams":{"alpine":{"n":"Alpine F1 Team","c":"#0093CC","nat":"French"},"aston_martin":{"n":"Aston Martin","c":"#229971","nat":"British"},"audi":{"n":"Audi","c":"#F50537","nat":"German"},"cadillac":{"n":"Cadillac F1 Team","c":"#C6A15B","nat":"American"},"ferrari":{"n":"Ferrari","c":"#E8002D","nat":"Italian"},"haas":{"n":"Haas F1 Team","c":"#B6BABD","nat":"American"},"mclaren":{"n":"McLaren","c":"#FF8000","nat":"British"},"mercedes":{"n":"Mercedes","c":"#00D7B6","nat":"German"},"rb":{"n":"RB F1 Team","c":"#6692FF","nat":"Italian"},"red_bull":{"n":"Red Bull","c":"#3671C6","nat":"Austrian"},"williams":{"n":"Williams","c":"#64C4FF","nat":"British"}},"drivers":{"albon":{"c":"ALB","g":"Alexander","f":"Albon","n":"23","nat":"Thai","t":"williams"},"alonso":{"c":"ALO","g":"Fernando","f":"Alonso","n":"14","nat":"Spanish","t":"aston_martin"},"antonelli":{"c":"ANT","g":"Andrea Kimi","f":"Antonelli","n":"12","nat":"Italian","t":"mercedes"},"bearman":{"c":"BEA","g":"Oliver","f":"Bearman","n":"87","nat":"British","t":"haas"},"bortoleto":{"c":"BOR","g":"Gabriel","f":"Bortoleto","n":"5","nat":"Brazilian","t":"audi"},"bottas":{"c":"BOT","g":"Valtteri","f":"Bottas","n":"77","nat":"Finnish","t":"cadillac"},"colapinto":{"c":"COL","g":"Franco","f":"Colapinto","n":"43","nat":"Argentine","t":"alpine"},"gasly":{"c":"GAS","g":"Pierre","f":"Gasly","n":"10","nat":"French","t":"alpine"},"hadjar":{"c":"HAD","g":"Isack","f":"Hadjar","n":"6","nat":"French","t":"red_bull"},"hamilton":{"c":"HAM","g":"Lewis","f":"Hamilton","n":"44","nat":"British","t":"ferrari"},"hulkenberg":{"c":"HUL","g":"Nico","f":"Hülkenberg","n":"27","nat":"German","t":"audi"},"lawson":{"c":"LAW","g":"Liam","f":"Lawson","n":"30","nat":"New Zealander","t":"red_bull"},"leclerc":{"c":"LEC","g":"Charles","f":"Leclerc","n":"16","nat":"Monegasque","t":"ferrari"},"arvid_lindblad":{"c":"LIN","g":"Arvid","f":"Lindblad","n":"41","nat":"British","t":"rb"},"norris":{"c":"NOR","g":"Lando","f":"Norris","n":"1","nat":"British","t":"mclaren"},"ocon":{"c":"OCO","g":"Esteban","f":"Ocon","n":"31","nat":"French","t":"haas"},"piastri":{"c":"PIA","g":"Oscar","f":"Piastri","n":"81","nat":"Australian","t":"mclaren"},"perez":{"c":"PER","g":"Sergio","f":"Pérez","n":"11","nat":"Mexican","t":"cadillac"},"russell":{"c":"RUS","g":"George","f":"Russell","n":"63","nat":"British","t":"mercedes"},"sainz":{"c":"SAI","g":"Carlos","f":"Sainz","n":"55","nat":"Spanish","t":"williams"},"stroll":{"c":"STR","g":"Lance","f":"Stroll","n":"18","nat":"Canadian","t":"aston_martin"},"tsunoda":{"c":"TSU","g":"Yuki","f":"Tsunoda","n":"22","nat":"Japanese","t":"rb"},"max_verstappen":{"c":"VER","g":"Max","f":"Verstappen","n":"3","nat":"Dutch","t":"red_bull"}},"races":[{"r":1,"name":"Australian Grand Prix","cc":"Australia","iso":"AU","circuit":"Albert Park Grand Prix Circuit","loc":"Melbourne","date":"2026-03-08","start":"2026-03-06","sprint":false,"done":true,"res":[["russell","mercedes",1,"1",1,25,"Finished",4986801],["antonelli","mercedes",2,"2",2,18,"Finished",4989775],["leclerc","ferrari",3,"3",4,15,"Finished",5002320],["hamilton","ferrari",4,"4",7,12,"Finished",5002945],["norris","mclaren",5,"5",6,10,"Finished",5038542],["max_verstappen","red_bull",6,"6",20,8,"Finished",5041418],["bearman","haas",7,"7",12,6,"Lapped",4991394],["arvid_lindblad","rb",8,"8",9,4,"Lapped",4998617],["bortoleto","audi",9,"9",10,2,"Lapped",4999576],["gasly","alpine",10,"10",14,1,"Lapped",5015828],["ocon","haas",11,"11",13,0,"Lapped",5016651],["albon","williams",12,"12",15,0,"Lapped",5042876],["lawson","rb",13,"13",8,0,"Lapped",5043974],["colapinto","alpine",14,"14",16,0,"Lapped",4995288],["sainz","williams",15,"15",21,0,"Lapped",5023687],["perez","cadillac",16,"16",18,0,"Lapped",4994651],["stroll","aston_martin",null,"R",22,0,"Lapped",null],["alonso","aston_martin",null,"R",17,0,"Retired",null],["bottas","cadillac",null,"R",19,0,"Retired",null],["hadjar","red_bull",null,"R",3,0,"Retired",null],["piastri","mclaren",null,"W",5,0,"Did not start",null],["hulkenberg","audi",null,"W",11,0,"Did not start",null]],"qual":[["russell",1],["antonelli",2],["hadjar",3],["leclerc",4],["piastri",5],["norris",6],["hamilton",7],["lawson",8],["arvid_lindblad",9],["bortoleto",10],["hulkenberg",11],["bearman",12],["ocon",13],["gasly",14],["albon",15],["colapinto",16],["alonso",17],["perez",18],["bottas",19]],"spr":[]},{"r":2,"name":"Chinese Grand Prix","cc":"China","iso":"CN","circuit":"Shanghai International Circuit","loc":"Shanghai","date":"2026-03-15","start":"2026-03-13","sprint":true,"done":true,"res":[["antonelli","mercedes",1,"1",1,25,"Finished",5595607],["russell","mercedes",2,"2",2,18,"Finished",5601122],["hamilton","ferrari",3,"3",3,15,"Finished",5620874],["leclerc","ferrari",4,"4",4,12,"Finished",5624501],["bearman","haas",5,"5",10,10,"Finished",5652875],["gasly","alpine",6,"6",7,8,"Finished",5655254],["lawson","rb",7,"7",14,6,"Finished",5676195],["hadjar","red_bull",8,"8",9,4,"Finished",5682854],["sainz","williams",9,"9",17,2,"Lapped",5607280],["colapinto","alpine",10,"10",12,1,"Lapped",5608010],["hulkenberg","audi",11,"11",11,0,"Lapped",5616716],["arvid_lindblad","rb",12,"12",15,0,"Lapped",5618435],["bottas","cadillac",13,"13",19,0,"Lapped",5651765],["ocon","haas",14,"14",13,0,"Lapped",5661863],["perez","cadillac",15,"15",21,0,"Lapped",5670248],["max_verstappen","red_bull",null,"R",8,0,"Retired",null],["alonso","aston_martin",null,"R",18,0,"Retired",null],["stroll","aston_martin",null,"R",20,0,"Retired",null],["piastri","mclaren",null,"W",5,0,"Did not start",null],["norris","mclaren",null,"W",6,0,"Did not start",null],["bortoleto","audi",null,"W",16,0,"Did not start",null],["albon","williams",null,"W",22,0,"Did not start",null]],"qual":[["antonelli",1],["russell",2],["hamilton",3],["leclerc",4],["piastri",5],["norris",6],["gasly",7],["max_verstappen",8],["hadjar",9],["bearman",10],["hulkenberg",11],["colapinto",12],["ocon",13],["lawson",14],["arvid_lindblad",15],["bortoleto",16],["sainz",17],["albon",18],["alonso",19],["bottas",20],["stroll",21],["perez",22]],"spr":[["russell","mercedes",1,"1",1,8,"Finished",2018998],["leclerc","ferrari",2,"2",6,7,"Finished",2019672],["hamilton","ferrari",3,"3",4,6,"Finished",2021552],["norris","mclaren",4,"4",3,5,"Finished",2023431],["antonelli","mercedes",5,"5",2,4,"Finished",2024686],["piastri","mclaren",6,"6",5,3,"Finished",2025807],["lawson","rb",7,"7",13,2,"Finished",2029898],["bearman","haas",8,"8",9,1,"Finished",2030269],["max_verstappen","red_bull",9,"9",8,0,"Finished",2030617],["ocon","haas",10,"10",12,0,"Finished",2032885],["gasly","alpine",11,"11",7,0,"Finished",2033778],["sainz","williams",12,"12",17,0,"Finished",2034751],["bortoleto","audi",13,"13",14,0,"Finished",2034856],["colapinto","alpine",14,"14",16,0,"Finished",2035391],["hadjar","red_bull",15,"15",10,0,"Finished",2035428],["albon","williams",16,"16",22,0,"Finished",2039012],["alonso","aston_martin",17,"17",18,0,"Finished",2040597],["stroll","aston_martin",18,"18",19,0,"Finished",2040969],["perez","cadillac",19,"19",21,0,"Finished",2047239],["hulkenberg","audi",null,"R",11,0,"Retired",null],["bottas","cadillac",null,"R",20,0,"Retired",null],["arvid_lindblad","rb",null,"R",15,0,"Retired",null]]},{"r":3,"name":"Japanese Grand Prix","cc":"Japan","iso":"JP","circuit":"Suzuka Circuit","loc":"Suzuka","date":"2026-03-29","start":"2026-03-27","sprint":false,"done":true,"res":[["antonelli","mercedes",1,"1",1,25,"Finished",5283403],["piastri","mclaren",2,"2",3,18,"Finished",5297125],["leclerc","ferrari",3,"3",4,15,"Finished",5298673],["russell","mercedes",4,"4",2,12,"Finished",5299157],["norris","mclaren",5,"5",5,10,"Finished",5306882],["hamilton","ferrari",6,"6",6,8,"Finished",5308440],["gasly","alpine",7,"7",7,6,"Finished",5315743],["max_verstappen","red_bull",8,"8",11,4,"Finished",5316080],["lawson","rb",9,"9",14,2,"Finished",5333583],["ocon","haas",10,"10",12,1,"Finished",5334619],["hulkenberg","audi",11,"11",13,0,"Finished",5335683],["hadjar","red_bull",12,"12",8,0,"Finished",5339557],["bortoleto","audi",13,"13",9,0,"Finished",5342481],["arvid_lindblad","rb",14,"14",10,0,"Finished",5343251],["sainz","williams",15,"15",16,0,"Finished",5348411],["colapinto","alpine",16,"16",15,0,"Finished",5349176],["perez","cadillac",17,"17",19,0,"Finished",5375856],["alonso","aston_martin",18,"18",21,0,"Lapped",5309951],["bottas","cadillac",19,"19",20,0,"Lapped",5326024],["albon","williams",20,"20",17,0,"Lapped",5288470],["stroll","aston_martin",null,"R",22,0,"Retired",null],["bearman","haas",null,"R",18,0,"Retired",null]],"qual":[["antonelli",1],["russell",2],["piastri",3],["leclerc",4],["norris",5],["hamilton",6],["gasly",7],["hadjar",8],["bortoleto",9],["arvid_lindblad",10],["max_verstappen",11],["ocon",12],["hulkenberg",13],["lawson",14],["colapinto",15],["sainz",16],["albon",17],["bearman",18],["perez",19],["bottas",20],["alonso",21],["stroll",22]],"spr":[]},{"r":4,"name":"Miami Grand Prix","cc":"USA","iso":"US","circuit":"Miami International Autodrome","loc":"Miami","date":"2026-05-03","start":"2026-05-01","sprint":true,"done":true,"res":[["antonelli","mercedes",1,"1",1,25,"Finished",5599273],["norris","mclaren",2,"2",4,18,"Finished",5602537],["piastri","mclaren",3,"3",7,15,"Finished",5626365],["russell","mercedes",4,"4",5,12,"Finished",5642324],["max_verstappen","red_bull",5,"5",2,10,"Finished",5648222],["hamilton","ferrari",6,"6",6,8,"Finished",5653026],["colapinto","alpine",7,"7",8,6,"Finished",5661144],["leclerc","ferrari",8,"8",3,4,"Finished",5663518],["sainz","williams",9,"9",13,2,"Finished",5681345],["albon","williams",10,"10",15,1,"Finished",5690245],["bearman","haas",11,"11",12,0,"Lapped",5605673],["bortoleto","audi",12,"12",21,0,"Lapped",5608626],["ocon","haas",13,"13",14,0,"Lapped",5613146],["arvid_lindblad","rb",14,"14",16,0,"Lapped",5644054],["alonso","aston_martin",15,"15",17,0,"Lapped",5674237],["perez","cadillac",16,"16",20,0,"Lapped",5676786],["stroll","aston_martin",17,"17",18,0,"Lapped",5681904],["bottas","cadillac",18,"18",19,0,"Lapped",5667528],["hulkenberg","audi",null,"R",10,0,"Retired",null],["lawson","rb",null,"R",11,0,"Retired",null],["gasly","alpine",null,"R",9,0,"Retired",null],["hadjar","red_bull",null,"R",22,0,"Retired",null]],"qual":[["antonelli",1],["max_verstappen",2],["leclerc",3],["norris",4],["russell",5],["hamilton",6],["piastri",7],["colapinto",8],["gasly",9],["hulkenberg",10],["lawson",11],["bearman",12],["sainz",13],["ocon",14],["albon",15],["arvid_lindblad",16],["alonso",17],["stroll",18],["bottas",19],["perez",20],["bortoleto",21],["hadjar",22]],"spr":[["norris","mclaren",1,"1",1,8,"Finished",1755045],["piastri","mclaren",2,"2",3,7,"Finished",1758811],["leclerc","ferrari",3,"3",4,6,"Finished",1761296],["russell","mercedes",4,"4",6,5,"Finished",1767996],["max_verstappen","red_bull",5,"5",5,4,"Finished",1768684],["antonelli","mercedes",6,"6",2,3,"Finished",1768822],["hamilton","ferrari",7,"7",7,2,"Finished",1776710],["gasly","alpine",8,"8",10,1,"Finished",1785570],["hadjar","red_bull",9,"9",9,0,"Finished",1790391],["colapinto","alpine",10,"10",8,0,"Finished",1792015],["ocon","haas",11,"11",16,0,"Finished",1812017],["bearman","haas",12,"12",13,0,"Finished",1812410],["sainz","williams",13,"13",14,0,"Finished",1813549],["lawson","rb",14,"14",15,0,"Finished",1814403],["alonso","aston_martin",15,"15",20,0,"Finished",1831112],["perez","cadillac",16,"16",17,0,"Finished",1831736],["stroll","aston_martin",17,"17",21,0,"Finished",1832671],["albon","williams",18,"18",18,0,"Finished",1843218],["bottas","cadillac",19,"19",19,0,"Finished",1844642],["hulkenberg","audi",null,"W",12,0,"Did not start",null],["arvid_lindblad","rb",null,"W",22,0,"Did not start",null],["bortoleto","audi",null,"D",11,0,"Disqualified",null]]},{"r":5,"name":"Canadian Grand Prix","cc":"Canada","iso":"CA","circuit":"Circuit Gilles Villeneuve","loc":"Montreal","date":"2026-05-24","start":"2026-05-22","sprint":true,"done":true,"res":[["antonelli","mercedes",1,"1",2,25,"Finished",5295758],["hamilton","ferrari",2,"2",5,18,"Finished",5306526],["max_verstappen","red_bull",3,"3",6,15,"Finished",5307034],["leclerc","ferrari",4,"4",8,12,"Finished",5339909],["hadjar","red_bull",5,"5",7,10,"Lapped",5300791],["colapinto","alpine",6,"6",10,8,"Lapped",5315268],["lawson","rb",7,"7",12,6,"Lapped",5329993],["gasly","alpine",8,"8",14,4,"Lapped",5330330],["sainz","williams",9,"9",15,2,"Lapped",5353772],["bearman","haas",10,"10",16,1,"Lapped",5354807],["piastri","mclaren",11,"11",4,0,"Lapped",5308457],["hulkenberg","audi",12,"12",11,0,"Lapped",5309940],["bortoleto","audi",13,"13",13,0,"Lapped",5316914],["ocon","haas",14,"14",17,0,"Lapped",5364393],["stroll","aston_martin",15,"15",22,0,"Lapped",5314155],["bottas","cadillac",16,"16",21,0,"Lapped",5349148],["perez","cadillac",null,"R",20,0,"Retired",null],["norris","mclaren",null,"R",3,0,"Retired",null],["russell","mercedes",null,"R",1,0,"Retired",null],["alonso","aston_martin",null,"R",19,0,"Retired",null],["albon","williams",null,"R",18,0,"Retired",null],["arvid_lindblad","rb",null,"W",9,0,"Did not start",null]],"qual":[["russell",1],["antonelli",2],["norris",3],["piastri",4],["hamilton",5],["max_verstappen",6],["hadjar",7],["leclerc",8],["arvid_lindblad",9],["colapinto",10],["hulkenberg",11],["lawson",12],["bortoleto",13],["sainz",15],["bearman",16],["gasly",14],["ocon",17],["albon",18],["alonso",19],["perez",20],["stroll",21],["bottas",22]],"spr":[["russell","mercedes",1,"1",1,8,"Finished",1730951],["norris","mclaren",2,"2",3,7,"Finished",1732223],["antonelli","mercedes",3,"3",2,6,"Finished",1732794],["piastri","mclaren",4,"4",4,5,"Finished",1740748],["leclerc","ferrari",5,"5",6,4,"Finished",1740880],["hamilton","ferrari",6,"6",5,3,"Finished",1741496],["max_verstappen","red_bull",7,"7",7,2,"Finished",1746886],["arvid_lindblad","rb",8,"8",9,1,"Finished",1760661],["colapinto","alpine",9,"9",13,0,"Finished",1762572],["sainz","williams",10,"10",10,0,"Finished",1767744],["lawson","rb",11,"11",18,0,"Finished",1792295],["bortoleto","audi",12,"12",12,0,"Finished",1792765],["ocon","haas",13,"13",14,0,"Finished",1795160],["perez","cadillac",14,"14",16,0,"Finished",1801353],["hulkenberg","audi",15,"15",11,0,"Finished",1803109],["stroll","aston_martin",16,"16",17,0,"Lapped",1744078],["bottas","cadillac",17,"17",21,0,"Lapped",1748812],["bearman","haas",18,"18",19,0,"Lapped",1754797],["albon","williams",19,"19",22,0,"Lapped",1784444],["gasly","alpine",20,"20",20,0,"Lapped",1799428],["hadjar","red_bull",21,"21",8,0,"Lapped",1749086],["alonso","aston_martin",null,"R",15,0,"Retired",null]]},{"r":6,"name":"Monaco Grand Prix","cc":"Monaco","iso":"MC","circuit":"Circuit de Monaco","loc":"Monte Carlo","date":"2026-06-07","start":"2026-06-05","sprint":false,"done":true,"res":[["antonelli","mercedes",1,"1",1,25,"Finished",8611243],["hamilton","ferrari",2,"2",3,18,"Finished",8617514],["gasly","alpine",3,"3",9,15,"Finished",8631612],["hadjar","red_bull",4,"4",5,12,"Finished",8634637],["piastri","mclaren",5,"5",7,10,"Finished",8635504],["lawson","rb",6,"6",10,8,"Finished",8637796],["arvid_lindblad","rb",7,"7",15,6,"Finished",8640253],["albon","williams",8,"8",11,4,"Finished",8644656],["ocon","haas",9,"9",17,2,"Finished",8648383],["alonso","aston_martin",10,"10",21,1,"Finished",8653142],["bortoleto","audi",11,"11",16,0,"Finished",8653991],["russell","mercedes",12,"12",6,0,"Finished",8654596],["hulkenberg","audi",13,"13",13,0,"Finished",8655345],["colapinto","alpine",14,"14",14,0,"Finished",8660207],["perez","cadillac",15,"15",18,0,"Finished",8660396],["sainz","williams",16,"16",12,0,"Retired",8012889],["leclerc","ferrari",null,"R",4,0,"Retired",null],["stroll","aston_martin",null,"R",22,0,"Retired",null],["norris","mclaren",null,"R",8,0,"Retired",null],["bearman","haas",null,"R",19,0,"Retired",null],["bottas","cadillac",null,"R",20,0,"Retired",null],["max_verstappen","red_bull",null,"R",2,0,"Retired",null]],"qual":[["antonelli",1],["max_verstappen",2],["hamilton",3],["leclerc",4],["hadjar",5],["russell",6],["piastri",7],["norris",8],["gasly",9],["lawson",10],["albon",11],["sainz",12],["hulkenberg",13],["colapinto",14],["arvid_lindblad",15],["bortoleto",16],["ocon",17],["perez",18],["bearman",19],["bottas",20],["alonso",21],["stroll",22]],"spr":[]},{"r":7,"name":"Barcelona Grand Prix","cc":"Spain","iso":"ES","circuit":"Circuit de Barcelona-Catalunya","loc":"Barcelona","date":"2026-06-14","start":"2026-06-12","sprint":false,"done":true,"res":[["hamilton","ferrari",1,"1",2,25,"Finished",5548105],["russell","mercedes",2,"2",1,18,"Finished",5567666],["norris","mclaren",3,"3",4,15,"Finished",5571824],["max_verstappen","red_bull",4,"4",5,12,"Finished",5588602],["piastri","mclaren",5,"5",7,10,"Finished",5606766],["hadjar","red_bull",6,"6",6,8,"Lapped",5572732],["gasly","alpine",7,"7",14,6,"Lapped",5603894],["lawson","rb",8,"8",8,4,"Lapped",5620329],["arvid_lindblad","rb",9,"9",11,2,"Lapped",5626179],["colapinto","alpine",10,"10",13,1,"Lapped",5627972],["bortoleto","audi",11,"11",12,0,"Lapped",5574792],["sainz","williams",12,"12",16,0,"Lapped",5575971],["ocon","haas",13,"13",17,0,"Lapped",5607254],["perez","cadillac",14,"14",19,0,"Lapped",5555874],["leclerc","ferrari",15,"15",10,0,"Retired",5251697],["antonelli","mercedes",16,"16",3,0,"Retired",5103909],["bearman","haas",17,"17",15,0,"Retired",5197448],["albon","williams",null,"R",18,0,"Lapped",null],["alonso","aston_martin",null,"R",22,0,"Retired",null],["hulkenberg","audi",null,"R",9,0,"Retired",null],["bottas","cadillac",null,"R",20,0,"Retired",null],["stroll","aston_martin",null,"R",21,0,"Retired",null]],"qual":[["russell",1],["hamilton",2],["antonelli",3],["norris",4],["max_verstappen",5],["hadjar",6],["piastri",7],["lawson",8],["hulkenberg",9],["leclerc",10],["arvid_lindblad",11],["bortoleto",12],["colapinto",13],["gasly",14],["bearman",15],["sainz",16],["ocon",17],["albon",18],["perez",19],["bottas",20],["stroll",21],["alonso",22]],"spr":[]},{"r":8,"name":"Austrian Grand Prix","cc":"Austria","iso":"AT","circuit":"Red Bull Ring","loc":"Spielberg","date":"2026-06-28","start":"2026-06-26","sprint":false,"done":true,"res":[["russell","mercedes",1,"1",1,25,"Finished",5197979],["max_verstappen","red_bull",2,"2",5,18,"Finished",5199590],["antonelli","mercedes",3,"3",4,15,"Finished",5199965],["piastri","mclaren",4,"4",7,12,"Finished",5219788],["hamilton","ferrari",5,"5",3,10,"Finished",5224372],["hadjar","red_bull",6,"6",8,8,"Finished",5227378],["norris","mclaren",7,"7",6,6,"Finished",5229484],["leclerc","ferrari",8,"8",2,4,"Finished",5243638],["lawson","rb",9,"9",9,2,"Lapped",5213313],["arvid_lindblad","rb",10,"10",10,1,"Lapped",5217009],["bortoleto","audi",11,"11",12,0,"Lapped",5228294],["hulkenberg","audi",12,"12",14,0,"Lapped",5236463],["gasly","alpine",13,"13",11,0,"Lapped",5237230],["bearman","haas",14,"14",13,0,"Lapped",5260656],["colapinto","alpine",15,"15",16,0,"Lapped",5263626],["ocon","haas",16,"16",15,0,"Lapped",5223911],["albon","williams",17,"17",18,0,"Lapped",5226061],["alonso","aston_martin",18,"18",21,0,"Lapped",5202812],["stroll","aston_martin",null,"R",22,0,"Retired",null],["sainz","williams",null,"R",17,0,"Retired",null],["perez","cadillac",null,"R",19,0,"Retired",null],["bottas","cadillac",null,"R",20,0,"Retired",null]],"qual":[["russell",1],["leclerc",2],["hamilton",3],["antonelli",4],["max_verstappen",5],["norris",6],["piastri",7],["hadjar",8],["lawson",9],["arvid_lindblad",10],["gasly",11],["bortoleto",12],["bearman",13],["hulkenberg",14],["ocon",15],["colapinto",16],["sainz",17],["albon",18],["perez",19],["bottas",20],["alonso",21],["stroll",22]],"spr":[]},{"r":9,"name":"British Grand Prix","cc":"UK","iso":"GB","circuit":"Silverstone Circuit","loc":"Silverstone","date":"2026-07-05","start":"2026-07-03","sprint":true,"done":true,"res":[["leclerc","ferrari",1,"1",2,25,"Finished",5231335],["russell","mercedes",2,"2",4,18,"Finished",5231762],["hamilton","ferrari",3,"3",3,15,"Finished",5232107],["norris","mclaren",4,"4",6,12,"Finished",5232484],["hadjar","red_bull",5,"5",5,10,"Finished",5232933],["lawson","rb",6,"6",10,8,"Finished",5233358],["arvid_lindblad","rb",7,"7",9,6,"Finished",5233549],["bortoleto","audi",8,"8",11,4,"Finished",5233748],["colapinto","alpine",9,"9",19,2,"Finished",5234564],["gasly","alpine",10,"10",15,1,"Finished",5234780],["piastri","mclaren",11,"11",8,0,"Finished",5235349],["bearman","haas",12,"12",13,0,"Finished",5236580],["ocon","haas",13,"13",17,0,"Finished",5236847],["perez","cadillac",14,"14",20,0,"Finished",5238738],["antonelli","mercedes",15,"15",1,0,"Finished",5239340],["bottas","cadillac",16,"16",18,0,"Finished",5239497],["sainz","williams",17,"17",14,0,"Lapped",5235726],["alonso","aston_martin",18,"18",21,0,"Lapped",5236315],["stroll","aston_martin",19,"19",22,0,"Lapped",5238085],["max_verstappen","red_bull",20,"20",7,0,"Retired",4396703],["albon","williams",null,"R",16,0,"Retired",null],["hulkenberg","audi",null,"R",12,0,"Retired",null]],"qual":[["antonelli",1],["leclerc",2],["hamilton",3],["russell",4],["hadjar",5],["norris",6],["max_verstappen",7],["piastri",8],["arvid_lindblad",9],["lawson",10],["bortoleto",11],["gasly",12],["hulkenberg",13],["bearman",14],["sainz",15],["albon",16],["ocon",17],["bottas",18],["colapinto",19],["perez",20],["stroll",21],["alonso",22]],"spr":[["antonelli","mercedes",1,"1",2,8,"Finished",1572129],["hamilton","ferrari",2,"2",1,7,"Finished",1574874],["norris","mclaren",3,"3",6,6,"Finished",1581912],["russell","mercedes",4,"4",5,5,"Finished",1582768],["leclerc","ferrari",5,"5",4,4,"Finished",1584749],["max_verstappen","red_bull",6,"6",3,3,"Finished",1588679],["piastri","mclaren",7,"7",7,2,"Finished",1589680],["lawson","rb",8,"8",9,1,"Finished",1602362],["hadjar","red_bull",9,"9",8,0,"Finished",1603082],["arvid_lindblad","rb",10,"10",10,0,"Finished",1607239],["gasly","alpine",11,"11",11,0,"Finished",1612402],["colapinto","alpine",12,"12",14,0,"Finished",1613155],["bortoleto","audi",13,"13",12,0,"Finished",1614628],["bearman","haas",14,"14",16,0,"Finished",1617913],["hulkenberg","audi",15,"15",13,0,"Finished",1618809],["ocon","haas",16,"16",17,0,"Finished",1621939],["sainz","williams",17,"17",15,0,"Finished",1622508],["albon","williams",18,"18",22,0,"Finished",1622886],["bottas","cadillac",19,"19",19,0,"Finished",1647246],["alonso","aston_martin",20,"20",20,0,"Finished",1664001],["stroll","aston_martin",21,"21",21,0,"Lapped",1594406],["perez","cadillac",22,"22",18,0,"Lapped",1605695]]},{"r":10,"name":"Belgian Grand Prix","cc":"Belgium","iso":"BE","circuit":"Circuit de Spa-Francorchamps","loc":"Spa","date":"2026-07-19","start":"2026-07-17","sprint":false,"done":true,"res":[["antonelli","mercedes",1,"1",1,25,"Finished",5082479],["leclerc","ferrari",2,"2",4,18,"Finished",5084431],["max_verstappen","red_bull",3,"3",2,15,"Finished",5094065],["hamilton","ferrari",4,"4",5,12,"Finished",5099724],["piastri","mclaren",5,"5",6,10,"Finished",5101467],["hadjar","red_bull",6,"6",21,8,"Finished",5105786],["norris","mclaren",7,"7",13,6,"Finished",5106493],["bortoleto","audi",8,"8",8,4,"Finished",5131619],["arvid_lindblad","rb",9,"9",7,2,"Finished",5132885],["colapinto","alpine",10,"10",11,1,"Finished",5158516],["gasly","alpine",11,"11",10,0,"Finished",5159470],["lawson","rb",12,"12",9,0,"Finished",5160002],["hulkenberg","audi",13,"13",12,0,"Finished",5160827],["bearman","haas",14,"14",14,0,"Finished",5176944],["albon","williams",15,"15",15,0,"Finished",5187163],["sainz","williams",16,"16",19,0,"Finished",5188335],["ocon","haas",17,"17",16,0,"Finished",5193404],["bottas","cadillac",18,"18",17,0,"Lapped",5143458],["alonso","aston_martin",19,"19",22,0,"Lapped",5103327],["stroll","aston_martin",null,"R",20,0,"Retired",null],["perez","cadillac",null,"R",18,0,"Retired",null],["russell","mercedes",null,"R",3,0,"Retired",null]],"qual":[["antonelli",1],["max_verstappen",2],["norris",3],["leclerc",5],["hadjar",10],["russell",4],["hamilton",6],["piastri",7],["arvid_lindblad",8],["bortoleto",9],["lawson",11],["gasly",12],["colapinto",13],["hulkenberg",14],["sainz",15],["bearman",16],["albon",17],["ocon",18],["bottas",19],["perez",20],["alonso",21],["stroll",22]],"spr":[]},{"r":11,"name":"Hungarian Grand Prix","cc":"Hungary","iso":"HU","circuit":"Hungaroring","loc":"Budapest","date":"2026-07-26","start":"2026-07-24","sprint":false,"done":true,"res":[["norris","mclaren",1,"1",1,25,"Finished",5996180],["max_verstappen","red_bull",2,"2",4,18,"Finished",6011260],["antonelli","mercedes",3,"3",7,15,"Finished",6014908],["leclerc","ferrari",4,"4",2,12,"Finished",6020020],["hamilton","ferrari",5,"5",5,10,"Finished",6020720],["hadjar","red_bull",6,"6",8,8,"Finished",6051668],["russell","mercedes",7,"7",6,6,"Finished",6053683],["lawson","rb",8,"8",11,4,"Lapped",6024213],["hulkenberg","audi",9,"9",10,2,"Lapped",6026562],["arvid_lindblad","rb",10,"10",9,1,"Lapped",6047230],["bortoleto","audi",11,"11",14,0,"Lapped",6048208],["gasly","alpine",12,"12",12,0,"Lapped",6049609],["stroll","aston_martin",13,"13",20,0,"Lapped",6060008],["alonso","aston_martin",14,"14",16,0,"Lapped",6062232],["colapinto","alpine",15,"15",13,0,"Lapped",6000056],["ocon","haas",16,"16",15,0,"Lapped",6009039],["albon","williams",17,"17",19,0,"Lapped",6048909],["sainz","williams",18,"18",18,0,"Lapped",6049153],["bearman","haas",19,"19",17,0,"Lapped",6053378],["piastri","mclaren",null,"R",3,0,"Retired",null],["perez","cadillac",null,"R",22,0,"Retired",null],["bottas","cadillac",null,"R",21,0,"Retired",null]],"qual":[["norris",1],["hamilton",2],["leclerc",3],["antonelli",4],["piastri",5],["max_verstappen",6],["russell",7],["hadjar",8],["arvid_lindblad",9],["hulkenberg",10],["lawson",11],["gasly",12],["colapinto",13],["bortoleto",14],["ocon",15],["alonso",16],["bearman",17],["sainz",18],["albon",19],["stroll",20],["bottas",21],["perez",22]],"spr":[]},{"r":12,"name":"Dutch Grand Prix","cc":"Netherlands","iso":"NL","circuit":"Circuit Park Zandvoort","loc":"Zandvoort","date":"2026-08-23","start":"2026-08-21","sprint":true,"done":true,"res":[["norris","mclaren",1,"1",1,25,"Finished",7484859],["antonelli","mercedes",2,"2",3,18,"Finished",7496395],["russell","mercedes",3,"3",2,15,"Finished",7500765],["hamilton","ferrari",4,"4",5,12,"Finished",7501614],["leclerc","ferrari",5,"5",6,10,"Finished",7502117],["piastri","mclaren",6,"6",4,8,"Finished",7517191],["lawson","red_bull",7,"7",8,6,"Finished",7564774],["hulkenberg","audi",8,"8",13,4,"Lapped",7520908],["alonso","aston_martin",9,"9",18,2,"Lapped",7533252],["gasly","alpine",10,"10",11,1,"Lapped",7534499],["tsunoda","rb",11,"11",12,0,"Lapped",7539181],["arvid_lindblad","rb",12,"12",10,0,"Lapped",7550539],["bortoleto","audi",13,"13",9,0,"Lapped",7551094],["colapinto","alpine",14,"14",14,0,"Lapped",7505393],["perez","cadillac",15,"15",22,0,"Lapped",7543441],["sainz","williams",16,"16",17,0,"Lapped",7555130],["albon","williams",17,"17",16,0,"Retired",7209329],["bottas","cadillac",null,"R",21,0,"Retired",null],["ocon","haas",null,"R",15,0,"Retired",null],["stroll","aston_martin",null,"R",19,0,"Retired",null],["bearman","haas",null,"R",20,0,"Retired",null],["max_verstappen","red_bull",null,"R",7,0,"Retired",null]],"qual":[["norris",1],["russell",2],["antonelli",3],["piastri",4],["hamilton",5],["leclerc",6],["max_verstappen",7],["lawson",8],["bortoleto",9],["arvid_lindblad",10],["gasly",11],["tsunoda",12],["hulkenberg",13],["colapinto",14],["ocon",15],["albon",16],["sainz",17],["alonso",18],["stroll",19],["bearman",20],["bottas",21],["perez",22]],"spr":[["russell","mercedes",1,"1",1,8,"Finished",1825318],["leclerc","ferrari",2,"2",3,7,"Finished",1826678],["norris","mclaren",3,"3",2,6,"Finished",1830514],["antonelli","mercedes",4,"4",5,5,"Finished",1830899],["piastri","mclaren",5,"5",4,4,"Finished",1835503],["max_verstappen","red_bull",6,"6",6,3,"Finished",1835847],["hamilton","ferrari",7,"7",7,2,"Finished",1837506],["gasly","alpine",8,"8",8,1,"Finished",1867828],["bortoleto","audi",9,"9",9,0,"Finished",1869755],["arvid_lindblad","rb",10,"10",10,0,"Finished",1870289],["lawson","red_bull",11,"11",11,0,"Finished",1872789],["colapinto","alpine",12,"12",13,0,"Finished",1879784],["tsunoda","rb",13,"13",12,0,"Finished",1881801],["ocon","haas",14,"14",15,0,"Finished",1891416],["bearman","haas",15,"15",17,0,"Finished",1891906],["albon","williams",16,"16",16,0,"Finished",1899950],["stroll","aston_martin",17,"17",18,0,"Finished",1899968],["alonso","aston_martin",18,"18",22,0,"Finished",1900602],["bottas","cadillac",19,"19",19,0,"Lapped",1829227],["sainz","williams",20,"20",21,0,"Lapped",1863041],["perez","cadillac",21,"21",20,0,"Lapped",1887795],["hulkenberg","audi",null,"R",14,0,"Lapped",null]]},{"r":13,"name":"Italian Grand Prix","cc":"Italy","iso":"IT","circuit":"Autodromo Nazionale di Monza","loc":"Monza","date":"2026-09-06","start":"2026-09-04","sprint":false,"done":false,"res":[],"qual":[],"spr":[]},{"r":14,"name":"Spanish Grand Prix","cc":"Spain","iso":"ES","circuit":"Madring","loc":"Madrid","date":"2026-09-13","start":"2026-09-11","sprint":false,"done":false,"res":[],"qual":[],"spr":[]},{"r":15,"name":"Azerbaijan Grand Prix","cc":"Azerbaijan","iso":"AZ","circuit":"Baku City Circuit","loc":"Baku","date":"2026-09-26","start":"2026-09-24","sprint":false,"done":false,"res":[],"qual":[],"spr":[]},{"r":16,"name":"Bahrain Grand Prix in Malaysia","cc":"Malaysia","iso":"MY","circuit":"Sepang International Circuit","loc":"Kuala Lumpur","date":"2026-10-04","start":"2026-10-02","sprint":false,"done":false,"res":[],"qual":[],"spr":[]},{"r":17,"name":"Singapore Grand Prix","cc":"Singapore","iso":"SG","circuit":"Marina Bay Street Circuit","loc":"Marina Bay","date":"2026-10-11","start":"2026-10-09","sprint":true,"done":false,"res":[],"qual":[],"spr":[]},{"r":18,"name":"United States Grand Prix","cc":"USA","iso":"US","circuit":"Circuit of the Americas","loc":"Austin","date":"2026-10-25","start":"2026-10-23","sprint":false,"done":false,"res":[],"qual":[],"spr":[]},{"r":19,"name":"Mexico City Grand Prix","cc":"Mexico","iso":"MX","circuit":"Autódromo Hermanos Rodríguez","loc":"Mexico City","date":"2026-11-01","start":"2026-10-30","sprint":false,"done":false,"res":[],"qual":[],"spr":[]},{"r":20,"name":"Brazilian Grand Prix","cc":"Brazil","iso":"BR","circuit":"Autódromo José Carlos Pace","loc":"São Paulo","date":"2026-11-08","start":"2026-11-06","sprint":false,"done":false,"res":[],"qual":[],"spr":[]},{"r":21,"name":"Las Vegas Grand Prix","cc":"USA","iso":"US","circuit":"Las Vegas Strip Street Circuit","loc":"Las Vegas","date":"2026-11-22","start":"2026-11-20","sprint":false,"done":false,"res":[],"qual":[],"spr":[]},{"r":22,"name":"Qatar Grand Prix","cc":"Qatar","iso":"QA","circuit":"Losail International Circuit","loc":"Lusail","date":"2026-11-29","start":"2026-11-27","sprint":false,"done":false,"res":[],"qual":[],"spr":[]},{"r":23,"name":"Abu Dhabi Grand Prix","cc":"UAE","iso":"AE","circuit":"Yas Marina Circuit","loc":"Abu Dhabi","date":"2026-12-06","start":"2026-12-04","sprint":false,"done":false,"res":[],"qual":[],"spr":[]}],"last":12,"next":13}}};
+const BUILT = "31 Aug 2026 21:48";
+
+const R_DRV = 0, R_TEAM = 1, R_POS = 2, R_PTXT = 3, R_GRID = 4, R_PTS = 5, R_STAT = 6, R_MS = 7;
+
+const VIEWS = [
+  {id:"schedule",    label:"Schedule",              ico:"◷"},
+  {id:"results",     label:"Results",               ico:"⚑"},
+  {id:"drivers-wdc", label:"Driver Standings",      ico:"≡"},
+  {id:"teams-wcc",   label:"Constructor Standings", ico:"≣"},
+  {id:"drivers",     label:"Drivers",               ico:"○"},
+  {id:"teams",       label:"Teams",                 ico:"▢"},
+];
+
+const state = {season:null, round:null, view:"schedule"};
+
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+  ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[c]));
+
+const S = () => DB.seasons[state.season];
+const RACES = () => S().races.filter(r => r.done && r.r <= state.round);
+
+function team(id){ return S().teams[id] || {n:id, c:"#6b7280"}; }
+function drv(id){ return S().drivers[id] || {c:"???", g:"", f:id, n:"", t:null}; }
+function drvName(id){ const d = drv(id); return (d.g + " " + d.f).trim(); }
+
+/* readable text colour over a team colour */
+function ink(hex){
+  const h = hex.replace("#", "");
+  const v = [0,2,4].map(i => parseInt(h.slice(i,i+2), 16) / 255)
+                   .map(c => c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4));
+  const L = 0.2126*v[0] + 0.7152*v[1] + 0.0722*v[2];
+  return L > 0.42 ? "#0b0e13" : "#ffffff";
+}
+function teamChip(id){
+  const t = team(id);
+  return '<span class="chip" style="background:' + t.c + ';color:' + ink(t.c) + '">' + esc(t.n) + "</span>";
+}
+function drvCell(id, teamId){
+  const t = team(teamId || drv(id).t);
+  return '<span class="tbar" style="background:' + t.c + '"></span>'
+       + esc(drvName(id)) + ' <span class="tname">' + esc(t.n) + "</span>";
+}
+const fmtPts = p => Number.isInteger(p) ? String(p) : p.toFixed(1).replace(/\.0$/, "");
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtDate(iso){
+  const p = iso.split("-");
+  return p[2] + " " + MON[+p[1] - 1];
+}
+function dateRange(a, b){
+  if(!a || a === b) return fmtDate(b);
+  return (a.slice(0,7) === b.slice(0,7) ? a.split("-")[2] : fmtDate(a)) + "–" + fmtDate(b);
+}
+function gap(ms){
+  if(ms == null) return "—";
+  const s = ms / 1000;
+  if(s < 60) return "+" + s.toFixed(3) + "s";
+  return "+" + Math.floor(s/60) + ":" + (s % 60).toFixed(3).padStart(6, "0");
+}
+const DASH = '<span class="muted">—</span>';
+
+/* ---------------- derived season state, as of state.round ---------------- */
+function compute(){
+  const races = RACES();
+  const d = {}, t = {};
+  /* points credited to the constructor they were actually scored with, so a
+     mid-season switcher does not make a team's lineup out-sum its own total */
+  const perTeam = {};
+  const credit = (teamId, drvId, pts) => {
+    const t = perTeam[teamId] || (perTeam[teamId] = {});
+    t[drvId] = (t[drvId] || 0) + pts;
+  };
+  const D = id => d[id] || (d[id] = {
+    pts:0, last:0, wins:0, podiums:0, poles:0, starts:0,
+    finishes:[], qpos:[], best:null, teamId:drv(id).t,
+  });
+  const T = id => t[id] || (t[id] = {pts:0, last:0, wins:0, podiums:0, poles:0});
+
+  let bigGain = null, wideWin = null, tightWin = null;
+
+  for(const r of races){
+    for(const row of r.res){
+      const a = D(row[R_DRV]), b = T(row[R_TEAM]);
+      a.pts += row[R_PTS]; b.pts += row[R_PTS];
+      credit(row[R_TEAM], row[R_DRV], row[R_PTS]);
+      a.starts++;
+      if(r.r === state.round){ a.last += row[R_PTS]; b.last += row[R_PTS]; }
+      const p = row[R_POS];
+      if(p != null){
+        a.finishes.push(p);
+        if(a.best == null || p < a.best) a.best = p;
+        if(p === 1){ a.wins++; b.wins++; }
+        if(p <= 3){ a.podiums++; b.podiums++; }
+        /* pit-lane starts come through as grid 0; count them from the back */
+        const grid = row[R_GRID] > 0 ? row[R_GRID] : r.res.length;
+        const g = grid - p;
+        if(g > 0 && (!bigGain || g > bigGain.g))
+          bigGain = {g:g, id:row[R_DRV], race:r};
+      }
+      a.teamId = row[R_TEAM];
+    }
+    for(const row of (r.spr || [])){
+      const a = D(row[R_DRV]), b = T(row[R_TEAM]);
+      a.pts += row[R_PTS]; b.pts += row[R_PTS];
+      credit(row[R_TEAM], row[R_DRV], row[R_PTS]);
+      if(r.r === state.round){ a.last += row[R_PTS]; b.last += row[R_PTS]; }
+    }
+    for(const q of r.qual){
+      D(q[0]).qpos.push(q[1]);
+      if(q[1] === 1){
+        D(q[0]).poles++;
+        const row = r.res.find(x => x[R_DRV] === q[0]);
+        if(row) T(row[R_TEAM]).poles++;
+      }
+    }
+    /* winning margin = P2 total race time - P1 total race time */
+    const p1 = r.res.find(x => x[R_POS] === 1), p2 = r.res.find(x => x[R_POS] === 2);
+    if(p1 && p2 && p1[R_MS] != null && p2[R_MS] != null){
+      const m = p2[R_MS] - p1[R_MS];
+      if(!wideWin  || m > wideWin.m)  wideWin  = {m:m, id:p1[R_DRV], race:r};
+      if(!tightWin || m < tightWin.m) tightWin = {m:m, id:p1[R_DRV], race:r};
+    }
+  }
+
+  const mean = a => a.length ? a.reduce((x,y) => x+y, 0) / a.length : null;
+  for(const id in d){
+    d[id].avgFin = mean(d[id].finishes);
+    d[id].avgQual = mean(d[id].qpos);
+  }
+
+  const rank = obj => Object.keys(obj)
+    .map(id => Object.assign({id:id}, obj[id]))
+    .sort((a,b) => b.pts - a.pts || b.wins - a.wins || b.podiums - a.podiums)
+    .map((x,i) => Object.assign(x, {pos:i+1}));
+
+  return {
+    races:races, d:d, t:t, perTeam:perTeam,
+    wdc: rank(d), wcc: rank(t),
+    bigGain:bigGain, wideWin:wideWin, tightWin:tightWin,
+    /* a regular started at least half the completed rounds - keeps a one-off
+       stand-in from topping the average-finish stat */
+    regulars: rank(d).filter(x => x.starts >= races.length / 2),
+  };
+}
+
+/* ---------------- views ---------------- */
+function vSchedule(){
+  const s = S();
+  const cards = s.races.map(r => {
+    const cls = r.r === s.next ? "next" : (r.done ? "past" : "");
+    const badge = r.done ? '<span class="b done">Completed</span>'
+                : r.r === s.next ? '<span class="b next">Next race</span>'
+                : '<span class="b up">Upcoming</span>';
+    return '<div class="race ' + cls + '">'
+      + '<span class="rd">R' + r.r + "</span>"
+      + '<span class="cc">' + r.iso + "</span>"
+      + "<h4>" + esc(r.name) + "</h4>"
+      + '<div class="circ">' + esc(r.circuit) + "</div>"
+      + '<div class="tiny muted">' + esc(r.loc) + ", " + esc(r.cc) + "</div>"
+      + '<div class="dates">' + dateRange(r.start, r.date) + "</div>"
+      + '<div class="badges">' + badge
+      + (r.sprint ? '<span class="b spr">Sprint</span>' : "") + "</div>"
+      + "</div>";
+  }).join("");
+  return '<div class="section"><div class="grid sched">' + cards + "</div></div>";
+}
+
+function vResults(c){
+  if(!c.races.length) return '<div class="empty">No completed rounds in this season yet.</div>';
+
+  const top = (key, fmt) => {
+    const x = c.wdc.slice().sort((a,b) => b[key] - a[key])[0];
+    return x && x[key] > 0 ? [esc(drvName(x.id)), fmt(x)] : ["—", ""];
+  };
+  const mostWins    = top("wins",    x => x.wins + (x.wins === 1 ? " win" : " wins"));
+  const mostPodiums = top("podiums", x => x.podiums + " podiums");
+  const mostPoles   = top("poles",   x => x.poles + (x.poles === 1 ? " pole" : " poles"));
+  const bestAvg = c.regulars.filter(x => x.avgFin != null)
+                            .sort((a,b) => a.avgFin - b.avgFin)[0];
+
+  const tiles = [
+    ["Most wins", mostWins[0], mostWins[1]],
+    ["Most podiums", mostPodiums[0], mostPodiums[1]],
+    ["Most poles", mostPoles[0], mostPoles[1]],
+    ["Best average finish",
+      bestAvg ? esc(drvName(bestAvg.id)) : "—",
+      bestAvg ? "P" + bestAvg.avgFin.toFixed(2) + " over " + bestAvg.starts + " starts" : ""],
+    ["Largest winning margin",
+      c.wideWin ? gap(c.wideWin.m) : "—",
+      c.wideWin ? esc(drvName(c.wideWin.id)) + " · " + esc(c.wideWin.race.name) : ""],
+    ["Closest winning margin",
+      c.tightWin ? gap(c.tightWin.m) : "—",
+      c.tightWin ? esc(drvName(c.tightWin.id)) + " · " + esc(c.tightWin.race.name) : ""],
+    ["Biggest position gain",
+      c.bigGain ? "+" + c.bigGain.g + " places" : "—",
+      c.bigGain ? esc(drvName(c.bigGain.id)) + " · " + esc(c.bigGain.race.name) : ""],
+  ].map(x => '<div class="tile"><div class="k">' + x[0] + '</div><div class="v">' + x[1]
+             + '</div><div class="s">' + x[2] + "</div></div>").join("");
+
+  const winnerOf = r => {
+    const row = r.res.find(x => x[R_POS] === 1);
+    return row ? drvCell(row[R_DRV], row[R_TEAM]) : DASH;
+  };
+  const poleOf = r => {
+    const q = r.qual.find(x => x[1] === 1);
+    if(!q) return DASH;
+    const row = r.res.find(x => x[R_DRV] === q[0]);
+    return drvCell(q[0], row ? row[R_TEAM] : null);
+  };
+  const sprintCell = (r, pred) => {
+    if(!r.sprint) return '<span class="tiny muted">no sprint</span>';
+    if(!r.spr || !r.spr.length) return DASH;
+    const row = r.spr.find(pred);
+    return row ? drvCell(row[R_DRV], row[R_TEAM]) : DASH;
+  };
+
+  const rows = c.races.slice().reverse().map(r =>
+    '<tr><td class="pos">' + r.r + "</td>"
+    + '<td><span class="cc">' + r.iso + "</span>" + esc(r.name) + "</td>"
+    + "<td>" + winnerOf(r) + "</td>"
+    + "<td>" + poleOf(r) + "</td>"
+    + "<td>" + sprintCell(r, x => x[R_POS] === 1) + "</td>"
+    + "<td>" + sprintCell(r, x => x[R_GRID] === 1) + "</td></tr>").join("");
+
+  const table = '<div class="tw"><table><thead><tr>'
+    + "<th>Rd</th><th>Grand Prix</th><th>Winner</th><th>Pole</th>"
+    + "<th>Sprint winner</th><th>Sprint pole</th>"
+    + "</tr></thead><tbody>" + rows + "</tbody></table></div>";
+
+  const CODES = {R:"DNF", D:"DSQ", W:"DNS", E:"EXC", N:"NC", F:"DNQ"};
+  const heads = c.races.map(r =>
+    '<th title="' + esc(r.name) + '"><span class="cc">' + r.iso + "</span><br>" + r.r + "</th>").join("");
+  const grid = c.wdc.map(x => {
+    const cells = c.races.map(r => {
+      const row = r.res.find(y => y[R_DRV] === x.id);
+      const spr = (r.spr || []).find(y => y[R_DRV] === x.id);
+      if(!row) return '<td class="z">–</td>';
+      const code = CODES[row[R_PTXT]];
+      if(code) return '<td class="dnf" title="' + esc(row[R_STAT]) + '">' + code + "</td>";
+      const pts = row[R_PTS] + (spr ? spr[R_PTS] : 0);
+      const cls = row[R_POS] === 1 ? "win" : (pts === 0 ? "z" : "");
+      return '<td class="' + cls + '" title="P' + row[R_POS]
+        + (spr ? " · sprint P" + spr[R_POS] : "") + '">' + fmtPts(pts) + "</td>";
+    }).join("");
+    return '<tr><td class="dh">' + drvCell(x.id, x.teamId) + "</td>"
+      + cells + '<td class="tot">' + fmtPts(x.pts) + "</td></tr>";
+  }).join("");
+
+  const pg = '<div class="pg"><table><thead><tr><th class="dh">Driver</th>'
+    + heads + '<th class="tot">Pts</th></tr></thead><tbody>' + grid + "</tbody></table></div>";
+
+  return '<div class="section"><h3>Season highlights</h3><div class="grid tiles">' + tiles + "</div></div>"
+    + '<div class="section"><h3>Round by round</h3>' + table + "</div>"
+    + '<div class="section"><h3>Driver points by round '
+    + '<span class="tiny" style="text-transform:none;letter-spacing:0">'
+    + "(race + sprint, hover a cell for detail)</span></h3>" + pg + "</div>";
+}
+
+function standingsTable(list, label, cell){
+  if(!list.length) return '<div class="empty">Nothing to show yet.</div>';
+  const rows = list.map(x =>
+    '<tr><td class="pos">' + x.pos + "</td>"
+    + "<td>" + cell(x) + "</td>"
+    + '<td class="num pts">' + fmtPts(x.pts) + "</td>"
+    + '<td class="num"><span class="delta ' + (x.last > 0 ? "up" : "zero") + '">'
+    + (x.last > 0 ? "+" + fmtPts(x.last) : "—") + "</span></td>"
+    + '<td class="num">' + x.wins + "</td>"
+    + '<td class="num">' + x.podiums + "</td>"
+    + '<td class="num">' + x.poles + "</td></tr>").join("");
+  return '<div class="tw"><table><thead><tr>'
+    + "<th>Pos</th><th>" + label + '</th><th class="num">Points</th>'
+    + '<th class="num">This round</th><th class="num">Wins</th>'
+    + '<th class="num">Podiums</th><th class="num">Poles</th>'
+    + "</tr></thead><tbody>" + rows + "</tbody></table></div>";
+}
+
+const vWDC = c => '<div class="section">'
+  + standingsTable(c.wdc, "Driver", x => drvCell(x.id, x.teamId)) + "</div>";
+const vWCC = c => '<div class="section">'
+  + standingsTable(c.wcc, "Constructor", x => teamChip(x.id)) + "</div>";
+
+function vDrivers(c){
+  if(!c.wdc.length) return '<div class="empty">No driver data for this round yet.</div>';
+  const st = (k,v) => '<div><div class="k">' + k + '</div><div class="v">' + v + "</div></div>";
+  const cards = c.wdc.map(x => {
+    const d = drv(x.id), t = team(x.teamId);
+    return '<div class="dcard">'
+      + '<div class="livery"><i style="background:' + t.c + '"></i>'
+      + '<i style="background:#11151d"></i><i style="background:' + t.c + '"></i></div>'
+      + '<div class="top">'
+      +   '<div class="mono" style="background:' + t.c + ';color:' + ink(t.c) + '">' + esc(d.c) + "</div>"
+      +   '<div class="who"><div class="n">' + esc(drvName(x.id)) + "</div>"
+      +   '<div class="t">' + esc(t.n) + "</div></div>"
+      +   '<div class="no">' + esc(d.n || "") + "</div>"
+      + "</div>"
+      + '<div class="stats">'
+      +   st("Points", fmtPts(x.pts))
+      +   st("Championship", "P" + x.pos)
+      +   st("Avg qualifying", x.avgQual != null ? "P" + x.avgQual.toFixed(1) : "—")
+      +   st("Avg finish",    x.avgFin  != null ? "P" + x.avgFin.toFixed(1)  : "—")
+      +   st("Best finish",   x.best != null ? "P" + x.best : "—")
+      +   st("Starts", x.starts)
+      + "</div></div>";
+  }).join("");
+  return '<div class="section"><div class="grid cards">' + cards + "</div></div>";
+}
+
+function vTeams(c){
+  if(!c.wcc.length) return '<div class="empty">No constructor data for this round yet.</div>';
+  const st = (k,v) => '<div><div class="k">' + k + '</div><div class="v">' + v + "</div></div>";
+
+  const cards = c.wcc.map(x => {
+    const t = team(x.id);
+    const seats = c.perTeam[x.id] || {};
+    const lineup = Object.keys(seats)
+      .sort((a,b) => seats[b] - seats[a] || drvName(a).localeCompare(drvName(b)))
+      .map(id =>
+        '<div class="lineup"><span>' + esc(drvName(id))
+        + ' <span class="tname">#' + esc(drv(id).n || "") + "</span></span>"
+        + '<span class="pts">' + fmtPts(seats[id]) + "</span></div>").join("");
+    return '<div class="dcard">'
+      + '<div class="livery" style="height:34px">'
+      +   '<i style="background:' + t.c + '"></i><i style="background:#11151d;flex:.35"></i>'
+      +   '<i style="background:' + t.c + '"></i></div>'
+      + '<div class="top"><div class="who">'
+      +   '<div class="n">' + esc(t.n) + "</div>"
+      +   '<div class="t">' + esc(t.nat || "") + "</div></div>"
+      +   '<div class="no">P' + x.pos + "</div></div>"
+      + '<div class="stats">'
+      +   st("Points", fmtPts(x.pts)) + st("Wins", x.wins)
+      +   st("Podiums", x.podiums)    + st("Poles", x.poles)
+      + "</div>" + lineup + "</div>";
+  }).join("");
+  return '<div class="section"><div class="grid cards">' + cards + "</div></div>";
+}
+
+/* ---------------- shell ---------------- */
+const TITLES = {
+  schedule:      ["Schedule", s => s.races.length + " rounds · " + s.season + " season"],
+  results:       ["Results", () => "Race by race through round " + state.round],
+  "drivers-wdc": ["Driver Standings", () => "World Drivers' Championship after round " + state.round],
+  "teams-wcc":   ["Constructor Standings", () => "World Constructors' Championship after round " + state.round],
+  drivers:       ["Drivers", () => "Season form after round " + state.round
+                    + " · the API carries no photos, so cards use team-coloured code badges"],
+  teams:         ["Teams", () => "Constructors after round " + state.round
+                    + " · liveries drawn from team colours, not photography"],
+};
+
+function render(){
+  const s = S();
+  const c = compute();
+  const spec = TITLES[state.view];
+  $("#viewTitle").textContent = spec[0];
+  $("#viewSub").textContent = spec[1](s);
+  $("#brandSub").textContent = s.season + " season";
+
+  const body = {
+    schedule:      () => vSchedule(),
+    results:       () => vResults(c),
+    "drivers-wdc": () => vWDC(c),
+    "teams-wcc":   () => vWCC(c),
+    drivers:       () => vDrivers(c),
+    teams:         () => vTeams(c),
+  }[state.view]();
+
+  $("#view").innerHTML = body;
+  const btns = document.querySelectorAll("#nav button");
+  for(let i = 0; i < btns.length; i++)
+    btns[i].setAttribute("aria-current", String(btns[i].dataset.v === state.view));
+  window.scrollTo(0, 0);
+}
+
+function fillRounds(){
+  const done = S().races.filter(r => r.done);
+  $("#roundSel").innerHTML = done.slice().reverse().map(r =>
+    '<option value="' + r.r + '">R' + r.r + " – " + esc(r.name) + "</option>").join("")
+    || '<option value="0">no completed rounds</option>';
+  state.round = done.length ? done[done.length - 1].r : 0;
+  $("#roundSel").value = String(state.round);
+}
+
+function init(){
+  const seasons = Object.keys(DB.seasons).sort().reverse();
+  state.season = seasons[0];
+
+  $("#nav").innerHTML = VIEWS.map(v =>
+    '<button data-v="' + v.id + '"><span class="ico">' + v.ico + "</span>" + v.label + "</button>").join("");
+  $("#nav").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if(b){ state.view = b.dataset.v; render(); }
+  });
+
+  $("#seasonSel").innerHTML = seasons.map(s => '<option value="' + s + '">' + s + "</option>").join("");
+  $("#seasonSel").value = state.season;
+  $("#seasonSel").addEventListener("change", e => {
+    state.season = e.target.value; fillRounds(); render();
+  });
+  $("#roundSel").addEventListener("change", e => {
+    state.round = +e.target.value; render();
+  });
+
+  $("#builtAt").textContent = "Snapshot built " + BUILT;
+  fillRounds();
+  render();
+}
+init();
+</script>
